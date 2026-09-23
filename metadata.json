@@ -1,0 +1,8 @@
+{
+  "name": "Remix gst-billing",
+  "description": "GST Invoicing & Client Deals Spreadsheet with Date, Customer Invoice Fetching, Separated Management Fee & Ad Budget, Received, Due, Sales Managers (Mahendra & Sankalp), and Remarks tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
