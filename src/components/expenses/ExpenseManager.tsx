@@ -4,6 +4,7 @@ import { formatINR } from '../../utils/gstUtils';
 import { api } from '../../utils/api';
 import { exportToCSV } from '../../utils/pdfGenerator';
 import { Plus, Search, FileSpreadsheet, Receipt, CheckCircle, Trash2, X, ShieldCheck } from 'lucide-react';
+import { toast } from '../common/Toast';
 
 interface ExpenseManagerProps {
   expenses: Expense[];
@@ -17,6 +18,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
 
   // Form states
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Software & Cloud');
   const [vendorName, setVendorName] = useState('');
   const [vendorGstin, setVendorGstin] = useState('');
@@ -29,52 +31,71 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
   const filteredExpenses = expenses.filter(e => {
     const s = searchTerm.toLowerCase();
     const matchSearch = !s ||
-      (e.title || '').toLowerCase().includes(s) ||
-      (e.vendorName || '').toLowerCase().includes(s);
+      (e.title || e.description || '').toLowerCase().includes(s) ||
+      (e.vendorName || e.vendor || '').toLowerCase().includes(s);
     const matchCat = categoryFilter === 'all' || e.category === categoryFilter;
     return matchSearch && matchCat;
   });
 
-  const totalExpense = expenses.reduce((sum, e) => sum + e.totalAmount, 0);
-  const totalITC = expenses.reduce((sum, e) => sum + (e.itcEligible ? e.gstAmount : 0), 0);
+  const totalExpense = expenses.reduce((sum, e) => sum + (Number(e.totalAmount) || (Number(e.amount || 0) + Number(e.gstAmount ?? e.taxAmount ?? 0))), 0);
+  const totalITC = expenses.reduce((sum, e) => {
+    const isEligible = e.itcEligible !== undefined ? e.itcEligible : (e.isTaxDeductible !== undefined ? e.isTaxDeductible : false);
+    const tax = Number(e.gstAmount ?? e.taxAmount ?? 0);
+    return sum + (isEligible ? tax : 0);
+  }, 0);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    const resolvedTitle = title.trim();
+    const resolvedDesc = description.trim() || resolvedTitle;
+
     const payload: Partial<Expense> = {
-      title,
+      title: resolvedTitle,
+      description: resolvedDesc,
+      notes: description.trim(),
       category,
-      vendorName,
-      vendorGstin,
+      vendorName: vendorName.trim(),
+      vendor: vendorName.trim(),
+      vendorGstin: vendorGstin.trim(),
       date,
       amount,
       gstAmount,
+      taxAmount: gstAmount,
       totalAmount: amount + gstAmount,
       paymentMode,
-      itcEligible
+      paymentMethod: paymentMode,
+      itcEligible,
+      isTaxDeductible: itcEligible
     };
 
     try {
       await api.createExpense(payload);
       setIsCreating(false);
+      setTitle('');
+      setDescription('');
+      setVendorName('');
+      setVendorGstin('');
+      toast.success('Expense recorded successfully');
       onRefresh();
     } catch (err: any) {
-      alert(err.message || 'Failed to record expense');
+      toast.error(err.message || 'Failed to record expense');
     }
   };
 
   const handleExportCsv = () => {
-    const headers = ['Title', 'Category', 'Vendor', 'Vendor GSTIN', 'Date', 'Taxable Amount', 'GST Amount', 'Total Amount', 'ITC Eligible', 'Payment Mode'];
+    const headers = ['Title', 'Description', 'Category', 'Vendor', 'Vendor GSTIN', 'Date', 'Taxable Amount', 'GST Amount', 'Total Amount', 'ITC Eligible', 'Payment Mode'];
     const rows = filteredExpenses.map(e => [
-      e.title,
+      e.title || e.description || 'Expense',
+      e.description || e.title || '',
       e.category,
-      e.vendorName,
+      e.vendorName || e.vendor || '',
       e.vendorGstin || '',
-      e.date,
+      e.date || e.expenseDate || '',
       e.amount,
-      e.gstAmount,
+      e.gstAmount ?? e.taxAmount ?? 0,
       e.totalAmount,
-      e.itcEligible ? 'YES' : 'NO',
-      e.paymentMode
+      (e.itcEligible ?? e.isTaxDeductible) ? 'YES' : 'NO',
+      e.paymentMode || e.paymentMethod || 'Bank'
     ]);
     exportToCSV(`Expenses_${new Date().toISOString().split('T')[0]}`, headers, rows);
   };
@@ -179,18 +200,23 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
             <tbody className="divide-y divide-slate-100">
               {filteredExpenses.map((exp) => (
                 <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-3 font-bold text-slate-900">{exp.title}</td>
+                  <td className="p-3">
+                    <p className="font-bold text-slate-900">{exp.title || exp.description || 'Expense'}</p>
+                    {exp.title && exp.description && exp.title !== exp.description && (
+                      <p className="text-[10px] text-slate-400 truncate max-w-xs">{exp.description}</p>
+                    )}
+                  </td>
                   <td className="p-3 text-slate-600">{exp.category}</td>
                   <td className="p-3 text-slate-800">
-                    <p className="font-semibold">{exp.vendorName}</p>
+                    <p className="font-semibold">{exp.vendorName || exp.vendor || 'Vendor'}</p>
                     <p className="text-[10px] font-mono text-slate-400">{exp.vendorGstin || 'Unregistered'}</p>
                   </td>
-                  <td className="p-3 text-slate-600">{exp.date}</td>
+                  <td className="p-3 text-slate-600">{exp.date || exp.expenseDate}</td>
                   <td className="p-3 text-right font-mono font-medium">{formatINR(exp.amount)}</td>
-                  <td className="p-3 text-right font-mono text-slate-600">{formatINR(exp.gstAmount)}</td>
+                  <td className="p-3 text-right font-mono text-slate-600">{formatINR(exp.gstAmount ?? exp.taxAmount ?? 0)}</td>
                   <td className="p-3 text-right font-mono font-bold text-slate-900">{formatINR(exp.totalAmount)}</td>
                   <td className="p-3 text-center">
-                    {exp.itcEligible ? (
+                    {(exp.itcEligible ?? exp.isTaxDeductible) ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                         ITC Yes
                       </span>
@@ -222,13 +248,24 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
 
             <form onSubmit={handleCreate} className="p-6 space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Expense Title</label>
+                <label className="block font-semibold text-slate-700 mb-1">Expense Title <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. AWS Cloud Infrastructure Billing"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Description / Notes (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Server hosting charges for client campaigns & internal CRM"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
                 />
               </div>

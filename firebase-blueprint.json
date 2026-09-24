@@ -1,0 +1,170 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User entity for application access",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "manager", "accountant"] }
+      },
+      "required": ["id", "email", "name"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Customer and client GST profiles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "gstin": { "type": "string" },
+        "pan": { "type": "string" },
+        "billingAddress": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "stateCode": { "type": "string" },
+        "country": { "type": "string" },
+        "pinCode": { "type": "string" },
+        "customerType": { "type": "string", "enum": ["B2B", "B2C", "SEZ", "Export"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "city", "state"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Tax invoices and billing transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "clientId": { "type": "string" },
+        "invoiceDate": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "sent", "partially_paid", "paid", "overdue", "cancelled"] },
+        "grandTotal": { "type": "number" },
+        "totalTaxableAmount": { "type": "number" },
+        "totalGst": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "balanceDue": { "type": "number" },
+        "currency": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "invoiceNumber", "clientId", "invoiceDate", "status", "grandTotal"]
+    },
+    "Quote": {
+      "title": "Quote",
+      "description": "Estimates and quotations for services",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "quoteNumber": { "type": "string" },
+        "clientId": { "type": "string" },
+        "quoteDate": { "type": "string" },
+        "validUntil": { "type": "string" },
+        "status": { "type": "string" },
+        "grandTotal": { "type": "number" }
+      },
+      "required": ["id", "quoteNumber", "clientId", "grandTotal"]
+    },
+    "CreditNote": {
+      "title": "CreditNote",
+      "description": "Credit notes linked to invoices",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "creditNoteNumber": { "type": "string" },
+        "invoiceId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "reason": { "type": "string" }
+      },
+      "required": ["id", "creditNoteNumber", "invoiceId", "totalAmount"]
+    },
+    "RecurringInvoice": {
+      "title": "RecurringInvoice",
+      "description": "Recurring AMC and retainers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "recurringNumber": { "type": "string" },
+        "clientId": { "type": "string" },
+        "frequency": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "recurringNumber", "clientId"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Business expense records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "date": { "type": "string" }
+      },
+      "required": ["id", "category", "totalAmount", "date"]
+    },
+    "Onboarding": {
+      "title": "Onboarding",
+      "description": "Client marketing retainer onboarding & lifecycle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "onboardingNumber": { "type": "string" },
+        "customerName": { "type": "string" },
+        "businessName": { "type": "string" },
+        "serviceFee": { "type": "number" },
+        "totalPackageValue": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "onboardingNumber", "customerName", "businessName"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Authorized staff and users"
+    },
+    "/settings/{settingId}": {
+      "description": "System settings and profiles"
+    },
+    "/clients/{clientId}": {
+      "schema": "Client",
+      "description": "Client registry and GST identities"
+    },
+    "/invoices/{invoiceId}": {
+      "schema": "Invoice",
+      "description": "Tax invoices and records"
+    },
+    "/quotes/{quoteId}": {
+      "schema": "Quote",
+      "description": "Estimates and proposals"
+    },
+    "/creditNotes/{noteId}": {
+      "schema": "CreditNote",
+      "description": "GST credit notes"
+    },
+    "/recurringInvoices/{recId}": {
+      "schema": "RecurringInvoice",
+      "description": "AMC and recurring billing"
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Operating expenses"
+    },
+    "/onboardings/{onbId}": {
+      "schema": "Onboarding",
+      "description": "Retainer onboardings"
+    },
+    "/auditLogs/{logId}": {
+      "description": "Immutable audit trails"
+    }
+  }
+}

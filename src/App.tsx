@@ -29,13 +29,29 @@ import { LoginScreen } from './components/auth/LoginScreen';
 import { OnboardingManager } from './components/onboarding/OnboardingManager';
 import { downloadElementAsPdf, triggerPrint, printInvoiceElement, getInvoicePdfFilename } from './utils/pdfGenerator';
 import { Download, Printer, X, Loader2 } from 'lucide-react';
+import { ToastContainer, toast } from './components/common/Toast';
+import './lib/firebase';
 
 export function App() {
   // Authentication State
   const [currentUser, setCurrentUser] = useState<any>(() => {
     try {
       const stored = localStorage.getItem('udm_auth_user') || sessionStorage.getItem('udm_auth_user');
-      return stored ? JSON.parse(stored) : null;
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      // Validate 7-day session expiration
+      if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+        localStorage.removeItem('udm_auth_user');
+        sessionStorage.removeItem('udm_auth_user');
+        return null;
+      }
+      // If loginTime is present, check 7 days limit
+      if (parsed.loginTime && Date.now() - new Date(parsed.loginTime).getTime() > 7 * 86400000) {
+        localStorage.removeItem('udm_auth_user');
+        sessionStorage.removeItem('udm_auth_user');
+        return null;
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -269,6 +285,15 @@ export function App() {
                   invoices={invoices}
                   onCreateInvoiceForClient={(client) => handleStartCreateInvoice(client)}
                   onRefresh={fetchAllData}
+                  onClientSaved={(savedClient) => {
+                    setClients(prev => {
+                      const exists = prev.some(c => c.id === savedClient.id);
+                      if (exists) {
+                        return prev.map(c => c.id === savedClient.id ? savedClient : c);
+                      }
+                      return [savedClient, ...prev];
+                    });
+                  }}
                 />
               )}
 
@@ -359,7 +384,7 @@ export function App() {
                         await downloadElementAsPdf(el, getInvoicePdfFilename(viewingInvoice));
                       } catch (err) {
                         console.error('Download error:', err);
-                        alert('Could not download PDF. You can also use Print.');
+                        toast.error('Could not download PDF. You can also use Print.');
                       } finally {
                         setIsDownloadingPdf(false);
                       }
@@ -401,6 +426,7 @@ export function App() {
               <InvoicePDFTemplate
                 id={`modal-global-pdf-${viewingInvoice.id}`}
                 invoice={viewingInvoice}
+                businessProfileFallback={businessProfile}
               />
             </div>
           </div>
@@ -433,6 +459,9 @@ export function App() {
           }}
         />
       )}
+
+      {/* Toast and Modal Dialog Container */}
+      <ToastContainer />
     </div>
   );
 }

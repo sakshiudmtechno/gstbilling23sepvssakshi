@@ -365,8 +365,10 @@ export function printInvoiceElement(target: HTMLElement | string, title: string 
 /**
  * Trigger browser printing
  */
-export function triggerPrint(): void {
-  const target = document.querySelector<HTMLElement>('#live-invoice-pdf-preview, [id^="modal-global-pdf-"], [id^="modal-invoice-pdf-"], #invoice-pdf-container');
+export function triggerPrint(customTargetId?: string | unknown): void {
+  const target = typeof customTargetId === 'string'
+    ? document.getElementById(customTargetId)
+    : document.querySelector<HTMLElement>('#live-invoice-pdf-preview, [id^="modal-global-pdf-"], [id^="modal-invoice-pdf-"], #invoice-pdf-container');
   if (target) {
     printInvoiceElement(target, 'UDM_Techno_Tax_Invoice');
   } else {

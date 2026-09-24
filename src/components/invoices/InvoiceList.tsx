@@ -6,6 +6,7 @@ import { downloadElementAsPdf, triggerPrint, printInvoiceElement, exportToCSV, g
 import { RecordPaymentModal } from './RecordPaymentModal';
 import { SendEmailModal } from './SendEmailModal';
 import { InvoicePDFTemplate } from './InvoicePDFTemplate';
+import { toast, showConfirm } from '../common/Toast';
 import {
   Search,
   Filter,
@@ -91,32 +92,47 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   const handleDuplicate = async (inv: Invoice) => {
     try {
       await api.duplicateInvoice(inv.id);
+      toast.success(`Duplicated invoice #${inv.invoiceNumber}`);
       onRefresh();
     } catch (e: any) {
-      alert(e.message || 'Failed to duplicate invoice');
+      toast.error(e.message || 'Failed to duplicate invoice');
     }
   };
 
   const handleCancel = async (inv: Invoice) => {
-    if (confirm(`Are you sure you want to cancel invoice #${inv.invoiceNumber}?`)) {
-      try {
-        await api.cancelInvoice(inv.id);
-        onRefresh();
-      } catch (e: any) {
-        alert(e.message || 'Failed to cancel invoice');
+    showConfirm({
+      title: 'Cancel Invoice',
+      message: `Are you sure you want to cancel invoice #${inv.invoiceNumber}?`,
+      confirmText: 'Cancel Invoice',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await api.cancelInvoice(inv.id);
+          toast.success(`Invoice #${inv.invoiceNumber} cancelled`);
+          onRefresh();
+        } catch (e: any) {
+          toast.error(e.message || 'Failed to cancel invoice');
+        }
       }
-    }
+    });
   };
 
   const handleDelete = async (inv: Invoice) => {
-    if (confirm(`Are you sure you want to permanently delete draft #${inv.invoiceNumber}?`)) {
-      try {
-        await api.deleteInvoice(inv.id);
-        onRefresh();
-      } catch (e: any) {
-        alert(e.message || 'Failed to delete invoice');
+    showConfirm({
+      title: 'Delete Draft Invoice',
+      message: `Are you sure you want to permanently delete draft #${inv.invoiceNumber}?`,
+      confirmText: 'Delete Draft',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await api.deleteInvoice(inv.id);
+          toast.success(`Draft #${inv.invoiceNumber} deleted`);
+          onRefresh();
+        } catch (e: any) {
+          toast.error(e.message || 'Failed to delete invoice');
+        }
       }
-    }
+    });
   };
 
   const handleDownloadInvoice = async (inv: Invoice) => {
@@ -134,7 +150,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
         }
       } catch (err: any) {
         console.error('Download failed:', err);
-        alert('Failed to generate PDF: ' + (err?.message || 'Error occurred while rendering'));
+        toast.error('Failed to generate PDF: ' + (err?.message || 'Error occurred while rendering'));
       } finally {
         setDownloadingId(null);
         setDirectDownloadInvoice(null);

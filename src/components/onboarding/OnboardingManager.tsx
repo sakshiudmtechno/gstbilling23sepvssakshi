@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { OnboardingEditorModal } from './OnboardingEditorModal';
 import { OnboardingPaymentModal } from './OnboardingPaymentModal';
+import { toast, showConfirm, showPrompt } from '../common/Toast';
 
 interface OnboardingManagerProps {
   clients: Client[];
@@ -82,21 +83,28 @@ export const OnboardingManager: React.FC<OnboardingManagerProps> = ({
   };
 
   const handleDeleteDeal = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete the deal for "${name}"?`)) {
-      try {
-        await api.deleteOnboarding(id);
-        fetchOnboardings();
-        if (onRefreshGlobal) onRefreshGlobal();
-      } catch (err: any) {
-        alert(err.message || 'Failed to delete deal');
+    showConfirm({
+      title: 'Delete Deal',
+      message: `Are you sure you want to delete the deal for "${name}"?`,
+      confirmText: 'Delete Deal',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await api.deleteOnboarding(id);
+          toast.success(`Deleted deal for "${name}"`);
+          fetchOnboardings();
+          if (onRefreshGlobal) onRefreshGlobal();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete deal');
+        }
       }
-    }
+    });
   };
 
   // Quick 1-Click Import from Invoices that aren't yet in Deals sheet
   const handleImportInvoices = async () => {
     if (invoices.length === 0) {
-      alert('No invoices found to import.');
+      toast.info('No invoices found to import.');
       return;
     }
 
@@ -104,68 +112,109 @@ export const OnboardingManager: React.FC<OnboardingManagerProps> = ({
     const unimported = invoices.filter(inv => !existingInvoiceIds.has(inv.id));
 
     if (unimported.length === 0) {
-      alert('All current invoices are already present in the deals sheet!');
+      toast.info('All current invoices are already present in the deals sheet!');
       return;
     }
 
-    if (!window.confirm(`Found ${unimported.length} invoices. Would you like to import them into the Deals Sheet?`)) {
-      return;
-    }
+    showConfirm({
+      title: 'Import Invoices',
+      message: `Found ${unimported.length} invoices. Would you like to import them into the Deals Sheet?`,
+      confirmText: 'Import Now',
+      isDanger: false,
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          for (const inv of unimported) {
+            const mgmtVal = inv.grandTotal || 0;
+            const paidVal = inv.amountPaid || 0;
+            const dueVal = Math.max(0, mgmtVal - paidVal);
+            const clientName = inv.client?.name || 'Customer';
+            const clientPhone = inv.client?.phone || '';
 
-    setIsLoading(true);
-    try {
-      for (const inv of unimported) {
-        const mgmtVal = inv.grandTotal || 0;
-        const paidVal = inv.amountPaid || 0;
-        const dueVal = Math.max(0, mgmtVal - paidVal);
-        const serviceName = (inv.items && inv.items[0]?.name) || 'Digital Marketing Service';
-        const clientName = inv.client?.name || 'Customer';
-        const clientPhone = inv.client?.phone || '';
+            let importedServices: any[] = [];
+            let serviceName = 'Digital Marketing Service';
 
-        await api.createOnboarding({
-          invoiceId: inv.id,
-          invoiceNumber: inv.invoiceNumber,
-          clientId: inv.clientId,
-          customerName: clientName,
-          businessName: clientName,
-          phone: clientPhone,
-          onboardingDate: inv.invoiceDate || new Date().toISOString().split('T')[0],
-          servicePackage: serviceName,
-          managementFee: mgmtVal,
-          serviceFee: mgmtVal,
-          managementFeePaid: paidVal,
-          adBudget: 0,
-          adTotalBudget: 0,
-          adBudgetPaid: 0,
-          totalDealValue: mgmtVal,
-          totalPackageValue: mgmtVal,
-          advancePaid: paidVal,
-          totalReceived: paidVal,
-          remainingBalance: dueVal,
-          totalDue: dueVal,
-          paymentStatus: dueVal === 0 ? 'paid' : (paidVal > 0 ? 'partially_paid' : 'unpaid'),
-          salesManager: 'Mahendra',
-          assignedExecutive: 'Mahendra',
-          remarks: `Imported from Invoice ${inv.invoiceNumber}`,
-          notes: `Imported from Invoice ${inv.invoiceNumber}`,
-          monthYear: (inv.invoiceDate || new Date().toISOString()).slice(0, 7),
-          status: 'active'
-        });
+            if (inv.items && inv.items.length > 0) {
+              serviceName = inv.items.map(it => it.name).filter(Boolean).join(', ') || 'Digital Marketing Service';
+              importedServices = inv.items.map((it, idx) => {
+                const itemTotal = Number(it.total) || (Number(it.rate || 0) * Number(it.quantity || 1) + Number(it.totalGstAmount || 0));
+                const itemPaid = inv.grandTotal > 0 && inv.amountPaid
+                  ? Math.round((itemTotal / inv.grandTotal) * inv.amountPaid)
+                  : 0;
+
+                return {
+                  id: `srv_imp_${idx}_${Date.now()}`,
+                  serviceName: it.name || `Service ${idx + 1}`,
+                  managementFee: itemTotal,
+                  managementFeePaid: itemPaid,
+                  adBudget: 0,
+                  adBudgetPaid: 0,
+                  dealValue: itemTotal,
+                  totalReceived: itemPaid,
+                  totalDue: Math.max(0, itemTotal - itemPaid)
+                };
+              });
+            } else {
+              importedServices = [{
+                id: `srv_imp_${Date.now()}`,
+                serviceName,
+                managementFee: mgmtVal,
+                managementFeePaid: paidVal,
+                adBudget: 0,
+                adBudgetPaid: 0,
+                dealValue: mgmtVal,
+                totalReceived: paidVal,
+                totalDue: dueVal
+              }];
+            }
+
+            await api.createOnboarding({
+              invoiceId: inv.id,
+              invoiceNumber: inv.invoiceNumber,
+              clientId: inv.clientId,
+              customerName: clientName,
+              businessName: clientName,
+              phone: clientPhone,
+              onboardingDate: inv.invoiceDate || new Date().toISOString().split('T')[0],
+              servicePackage: serviceName,
+              services: importedServices,
+              managementFee: mgmtVal,
+              serviceFee: mgmtVal,
+              managementFeePaid: paidVal,
+              adBudget: 0,
+              adTotalBudget: 0,
+              adBudgetPaid: 0,
+              totalDealValue: mgmtVal,
+              totalPackageValue: mgmtVal,
+              advancePaid: paidVal,
+              totalReceived: paidVal,
+              remainingBalance: dueVal,
+              totalDue: dueVal,
+              paymentStatus: dueVal === 0 ? 'paid' : (paidVal > 0 ? 'partially_paid' : 'unpaid'),
+              salesManager: 'Mahendra',
+              assignedExecutive: 'Mahendra',
+              remarks: `Imported from Invoice ${inv.invoiceNumber}`,
+              notes: `Imported from Invoice ${inv.invoiceNumber}`,
+              monthYear: (inv.invoiceDate || new Date().toISOString()).slice(0, 7),
+              status: 'active'
+            });
+          }
+          fetchOnboardings();
+          if (onRefreshGlobal) onRefreshGlobal();
+          toast.success(`Successfully imported ${unimported.length} invoices into the deals sheet!`);
+        } catch (err: any) {
+          toast.error('Failed to import invoices: ' + (err.message || 'Unknown error'));
+        } finally {
+          setIsLoading(false);
+        }
       }
-      fetchOnboardings();
-      if (onRefreshGlobal) onRefreshGlobal();
-      alert(`Successfully imported ${unimported.length} invoices into the deals sheet!`);
-    } catch (err: any) {
-      alert('Failed to import invoices: ' + (err.message || 'Unknown error'));
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   // Export to CSV / Excel
   const handleExportCSV = () => {
     if (onboardings.length === 0) {
-      alert('No data to export.');
+      toast.info('No data to export.');
       return;
     }
 
@@ -242,23 +291,56 @@ export const OnboardingManager: React.FC<OnboardingManagerProps> = ({
       if (ad > 0) text += `\n- Ad Budget: ₹${ad.toLocaleString('en-IN')}`;
       text += `\n- Received: ₹${totalRec.toLocaleString('en-IN')}`;
       text += `\n- Pending Due: ₹${dueAmount.toLocaleString('en-IN')}`;
+
+      if (item.services && item.services.length > 1) {
+        text += `\n\nServices Included:`;
+        item.services.forEach((s) => {
+          const sMgmt = Number(s.managementFee) || 0;
+          const sAd = Number(s.adBudget) || 0;
+          const sTot = sMgmt + sAd;
+          const sRec = (Number(s.managementFeePaid) || 0) + (Number(s.adBudgetPaid) || 0);
+          const sDue = Math.max(0, sTot - sRec);
+          text += `\n• ${s.serviceName}: ₹${sTot.toLocaleString('en-IN')}${sDue > 0 ? ` (Due: ₹${sDue.toLocaleString('en-IN')})` : ' (Paid)'}`;
+        });
+      }
+
       text += `\n\nKindly arrange the pending payment at your earliest convenience.`;
     } else {
       text += `\n\nYour account is fully paid (₹${dealVal.toLocaleString('en-IN')}). Thank you for partnering with us!`;
     }
     text += `\n\nSales Manager: ${manager}\nBest Regards,\nUDM Techno Solutions`;
 
+    const sendWhatsAppMessage = (phoneTarget: string) => {
+      const clean = phoneTarget.replace(/[^0-9]/g, '');
+      const full = clean.startsWith('91') ? clean : '91' + clean;
+      const url = `https://wa.me/${full}?text=${encodeURIComponent(text)}`;
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Opening WhatsApp...');
+    };
+
     if (!phoneClean) {
-      const manualPhone = window.prompt(`Enter WhatsApp number for ${clientName}:`, '91');
-      if (manualPhone) {
-        const clean = manualPhone.replace(/[^0-9]/g, '');
-        window.open(`https://wa.me/${clean}?text=${encodeURIComponent(text)}`, '_blank');
-      }
+      showPrompt({
+        title: 'WhatsApp Contact',
+        message: `Enter WhatsApp phone number for ${clientName}:`,
+        defaultValue: '91',
+        placeholder: 'e.g. 919876543210',
+        confirmText: 'Open WhatsApp',
+        onConfirm: (manualPhone) => {
+          if (manualPhone && manualPhone.trim()) {
+            sendWhatsAppMessage(manualPhone);
+          }
+        }
+      });
       return;
     }
 
-    const fullPhone = phoneClean.startsWith('91') ? phoneClean : '91' + phoneClean;
-    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(text)}`, '_blank');
+    sendWhatsAppMessage(phoneClean);
   };
 
   // Create Invoice in Invoicing Module
@@ -736,9 +818,28 @@ export const OnboardingManager: React.FC<OnboardingManagerProps> = ({
 
                       {/* 3. Service */}
                       <td className="py-1.5 px-2.5 border-r border-slate-200">
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800 border border-slate-200 truncate max-w-[130px]">
-                          {item.servicePackage || 'Meta Ads'}
-                        </span>
+                        {item.services && item.services.length > 1 ? (
+                          <div className="flex flex-col gap-1 max-w-[200px]">
+                            <div className="flex flex-wrap items-center gap-1">
+                              {item.services.map((srv, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                  title={`${srv.serviceName}: Mgmt Fee ${formatINR(srv.managementFee || 0)} (Rec: ${formatINR(srv.managementFeePaid || 0)}), Ad Budget ${formatINR(srv.adBudget || 0)} (Rec: ${formatINR(srv.adBudgetPaid || 0)})`}
+                                >
+                                  {srv.serviceName}
+                                </span>
+                              ))}
+                            </div>
+                            <span className="text-[9px] text-slate-400 font-medium">
+                              {item.services.length} services bundled
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800 border border-slate-200 truncate max-w-[150px]" title={item.servicePackage || 'Meta Ads'}>
+                            {item.servicePackage || 'Meta Ads'}
+                          </span>
+                        )}
                       </td>
 
                       {/* 4. Management Fee (₹) */}

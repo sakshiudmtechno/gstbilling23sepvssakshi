@@ -5,6 +5,7 @@ import { downloadElementAsPdf, triggerPrint } from '../../utils/pdfGenerator';
 import { InvoicePDFTemplate } from '../invoices/InvoicePDFTemplate';
 import { PREDEFINED_SERVICES, calculateAdBudgetStats } from '../../constants/services';
 import { formatINR, numberToIndianWords } from '../../utils/gstUtils';
+import { toast } from '../common/Toast';
 import { 
   Plus, 
   Trash2, 
@@ -177,7 +178,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
     if (e && e.preventDefault) e.preventDefault();
 
     if (!clientName.trim()) {
-      alert('Please enter a Client Name before saving the estimate.');
+      toast.error('Please enter a Client Name before saving the estimate.');
       return;
     }
 
@@ -275,9 +276,10 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
       resetForm();
       setIsCreating(false);
       setViewingQuote(null);
+      toast.success(editingQuoteId ? 'Estimate updated successfully' : 'Estimate created successfully');
     } catch (err: any) {
       console.error(err);
-      alert(`Failed to save estimate: ${err.message || err}`);
+      toast.error(`Failed to save estimate: ${err.message || err}`);
     } finally {
       setIsSaving(false);
     }
@@ -287,11 +289,25 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
     try {
       setIsDownloadingPdf(true);
       await downloadElementAsPdf('live-quote-pdf', `Estimate-${quoteNumber}.pdf`);
+      toast.success('Estimate PDF downloaded');
     } catch (err) {
       console.error('Failed to download PDF:', err);
-      alert('Failed to generate estimate PDF. Please try again.');
+      toast.error('Failed to generate estimate PDF. Please try again.');
     } finally {
       setIsDownloadingPdf(false);
+    }
+  };
+
+  const handleDeleteQuote = async (quote: Quote) => {
+    if (!window.confirm(`Are you sure you want to delete estimate "${quote.quoteNumber}"? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await api.deleteQuote(quote.id);
+      toast.success(`Estimate "${quote.quoteNumber}" deleted successfully`);
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete estimate');
     }
   };
 
@@ -301,9 +317,10 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
       setDirectDownloadQuote(quote);
       await new Promise(resolve => setTimeout(resolve, 150));
       await downloadElementAsPdf(`direct-quote-pdf-${quote.id}`, `Estimate-${quote.quoteNumber}.pdf`);
+      toast.success('Estimate PDF downloaded');
     } catch (err) {
       console.error('Failed to download quote PDF:', err);
-      alert('Failed to generate PDF. Please try again.');
+      toast.error('Failed to generate PDF. Please try again.');
     } finally {
       setDownloadingQuoteId(null);
       setDirectDownloadQuote(null);
@@ -514,6 +531,14 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                           title="Edit Estimate"
                         >
                           <Edit className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteQuote(quote)}
+                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded"
+                          title="Delete Estimate"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                         {quote.status !== 'converted' && (
                           <button

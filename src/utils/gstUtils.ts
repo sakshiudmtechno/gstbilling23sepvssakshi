@@ -173,31 +173,39 @@ export function numberToIndianWords(num: number): string {
     if (remainder > 0) {
       str += convertTwoDigits(remainder);
     }
-    return str;
+    return str.trim();
+  }
+
+  function convertUnderTenMillion(n: number): string {
+    if (n === 0) return '';
+    const lakhs = Math.floor(n / 100000);
+    const thousands = Math.floor((n % 100000) / 1000);
+    const hundreds = n % 1000;
+    const parts: string[] = [];
+    if (lakhs > 0) parts.push(`${convertTwoDigits(lakhs)} Lakh`);
+    if (thousands > 0) parts.push(`${convertTwoDigits(thousands)} Thousand`);
+    if (hundreds > 0) parts.push(convertThreeDigits(hundreds));
+    return parts.join(' ').trim();
   }
 
   const rounded = Math.round(num * 100) / 100;
   const integerPart = Math.floor(Math.abs(rounded));
   const paise = Math.round((Math.abs(rounded) - integerPart) * 100);
 
-  let crores = Math.floor(integerPart / 10000000);
-  let lakhs = Math.floor((integerPart % 10000000) / 100000);
-  let thousands = Math.floor((integerPart % 100000) / 1000);
-  let hundreds = integerPart % 1000;
+  const crores = Math.floor(integerPart / 10000000);
+  const remainder = integerPart % 10000000;
 
   let words = '';
-
   if (crores > 0) {
-    words += `${convertTwoDigits(crores)} Crore `;
+    if (crores < 100) {
+      words += `${convertTwoDigits(crores)} Crore `;
+    } else {
+      words += `${convertUnderTenMillion(crores)} Crore `;
+    }
   }
-  if (lakhs > 0) {
-    words += `${convertTwoDigits(lakhs)} Lakh `;
-  }
-  if (thousands > 0) {
-    words += `${convertTwoDigits(thousands)} Thousand `;
-  }
-  if (hundreds > 0) {
-    words += `${convertThreeDigits(hundreds)} `;
+
+  if (remainder > 0) {
+    words += convertUnderTenMillion(remainder);
   }
 
   words = words.trim();
@@ -205,7 +213,7 @@ export function numberToIndianWords(num: number): string {
     words = 'Zero';
   }
 
-  words += ' Rupees';
+  words += integerPart === 1 ? ' Rupee' : ' Rupees';
 
   if (paise > 0) {
     words += ` and ${convertTwoDigits(paise)} Paise`;

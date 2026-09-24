@@ -269,20 +269,22 @@ export interface RecurringInvoice {
   title?: string;
   recurringNumber?: string;
   clientId: string;
-  client: Client;
+  client?: Client;
   clientName?: string;
-  frequency: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  frequency: 'weekly' | 'monthly' | 'quarterly' | 'half_yearly' | 'yearly';
   startDate: string;
   endDate?: string;
   nextInvoiceDate?: string;
+  nextDueDate?: string;
   nextRunDate?: string;
   lastGeneratedInvoiceId?: string;
-  status: 'active' | 'paused' | 'completed';
+  status: 'active' | 'paused' | 'completed' | 'cancelled';
   items?: InvoiceItem[];
   invoiceTemplateData?: any;
   terms?: string;
   autoSendEmail?: boolean;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Expense {
@@ -296,11 +298,14 @@ export interface Expense {
   category: string;
   description?: string;
   amount: number;
+  taxAmount?: number;
   gstAmount: number;
   totalAmount: number;
   paymentMode?: string;
   paymentMethod?: string;
   itcEligible?: boolean;
+  isTaxDeductible?: boolean;
+  invoiceNumber?: string;
   receiptUrl?: string;
   notes?: string;
   createdAt?: string;
@@ -359,6 +364,18 @@ export interface AuditLog {
   timestamp: string;
 }
 
+export interface DealServiceItem {
+  id?: string;
+  serviceName: string;
+  managementFee: number;
+  managementFeePaid: number;
+  adBudget: number;
+  adBudgetPaid: number;
+  dealValue?: number;
+  totalReceived?: number;
+  totalDue?: number;
+}
+
 export interface CustomerOnboarding {
   id: string;
   onboardingNumber: string; // e.g. ONB-001
@@ -380,8 +397,9 @@ export interface CustomerOnboarding {
   nextPaymentDueDate: string; // YYYY-MM-DD
   lastRenewalDate?: string;
   
-  // Service package
-  servicePackage: string; // e.g. "Meta Ads & Lead Gen Retainer", "Website + SEO + Google Ads"
+  // Service package & Multi-Service support
+  servicePackage: string; // e.g. "Social Media Management, Google Ads"
+  services?: DealServiceItem[]; // Repeatable services under a single deal
   
   // Meta & Google Ads Campaign Tracking
   hasAdsCampaign: boolean;

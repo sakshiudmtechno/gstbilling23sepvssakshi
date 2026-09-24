@@ -37,9 +37,13 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({
   const totalOutputGst = totalCgst + totalSgst + totalIgst;
   const totalRevenue = validInvoices.reduce((sum, i) => sum + i.grandTotal, 0);
 
-  const totalExpenseTaxable = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const totalITC = expenses.reduce((sum, e) => sum + (e.itcEligible ? e.gstAmount : 0), 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.totalAmount, 0);
+  const totalExpenseTaxable = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const totalITC = expenses.reduce((sum, e) => {
+    const isEligible = e.itcEligible !== undefined ? e.itcEligible : (e.isTaxDeductible !== undefined ? e.isTaxDeductible : false);
+    const tax = Number(e.gstAmount ?? e.taxAmount ?? 0);
+    return sum + (isEligible ? tax : 0);
+  }, 0);
+  const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.totalAmount) || (Number(e.amount || 0) + Number(e.gstAmount ?? e.taxAmount ?? 0))), 0);
 
   const netGstPayable = Math.max(0, totalOutputGst - totalITC);
   const netProfit = totalRevenue - totalExpenses;

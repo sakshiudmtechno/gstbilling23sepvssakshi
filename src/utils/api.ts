@@ -19,7 +19,13 @@ const BASE_URL = '/api';
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({ message: 'Server error occurred' }));
-    throw new Error(errorBody.message || `Request failed with status ${res.status}`);
+    const errorDetails = Array.isArray(errorBody.errors)
+      ? ': ' + errorBody.errors.map((e: any) => `${e.path?.join('.') || 'field'} (${e.message})`).join(', ')
+      : '';
+    const err: any = new Error((errorBody.message || `Request failed with status ${res.status}`) + errorDetails);
+    err.conflict = errorBody.conflict;
+    err.status = res.status;
+    throw err;
   }
   const json = await res.json();
   return json.data !== undefined ? json.data : json;
@@ -38,7 +44,11 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials)
     });
-    return handleResponse<any>(res);
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json.message || 'Authentication failed. Please verify your credentials.');
+    }
+    return json;
   },
 
   // Dashboard Stats
@@ -123,10 +133,18 @@ export const api = {
     return handleResponse<Client>(res);
   },
 
-  async deleteClient(id: string): Promise<void> {
-    const res = await fetch(`${BASE_URL}/clients/${id}`, {
+  async deleteClient(id: string, force = false): Promise<void> {
+    const url = `${BASE_URL}/clients/${id}${force ? '?force=true' : ''}`;
+    const res = await fetch(url, {
       method: 'DELETE'
     });
+    if (res.status === 409) {
+      const conflictData = await res.json().catch(() => ({}));
+      const err: any = new Error(conflictData.message || 'Client has linked documents.');
+      err.conflict = true;
+      err.dependencies = conflictData.dependencies;
+      throw err;
+    }
     await handleResponse<any>(res);
   },
 
@@ -260,6 +278,15 @@ export const api = {
     return handleResponse<CreditNote>(res);
   },
 
+  async updateCreditNote(id: string, data: Partial<CreditNote>): Promise<CreditNote> {
+    const res = await fetch(`${BASE_URL}/credit-notes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return handleResponse<CreditNote>(res);
+  },
+
   async deleteCreditNote(id: string): Promise<void> {
     const res = await fetch(`${BASE_URL}/credit-notes/${id}`, {
       method: 'DELETE'
@@ -310,7 +337,7 @@ export const api = {
     const res = await fetch(`${BASE_URL}/recurring-invoices/${id}/trigger`, {
       method: 'POST'
     });
-    const json = await res.json();
+    const json = await handleResponse<{ success: boolean; invoice: Invoice }>(res);
     return json.invoice;
   },
 
@@ -327,6 +354,15 @@ export const api = {
   async createExpense(data: Partial<Expense>): Promise<Expense> {
     const res = await fetch(`${BASE_URL}/expenses`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return handleResponse<Expense>(res);
+  },
+
+  async updateExpense(id: string, data: Partial<Expense>): Promise<Expense> {
+    const res = await fetch(`${BASE_URL}/expenses/${id}`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });

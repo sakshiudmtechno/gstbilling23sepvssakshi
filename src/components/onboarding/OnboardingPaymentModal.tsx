@@ -88,17 +88,40 @@ export const OnboardingPaymentModal: React.FC<OnboardingPaymentModalProps> = ({
             <span>Total Deal Value:</span>
             <span className="font-bold text-slate-900">{formatINR(onboarding.totalDealValue || onboarding.totalPackageValue || onboarding.serviceFee || 0)}</span>
           </div>
-          {(onboarding.managementFee || onboarding.serviceFee) && (
-            <div className="flex justify-between items-center text-indigo-900 text-[11px] pl-2 border-l-2 border-indigo-200">
-              <span>Management Fee:</span>
-              <span className="font-semibold">{formatINR(onboarding.managementFee || onboarding.serviceFee || 0)}</span>
+          {onboarding.services && onboarding.services.length > 1 ? (
+            <div className="py-1.5 my-1 border-y border-slate-200 space-y-1">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                Services Included ({onboarding.services.length}):
+              </div>
+              {onboarding.services.map((srv, idx) => {
+                const sVal = (Number(srv.managementFee) || 0) + (Number(srv.adBudget) || 0);
+                const sRec = (Number(srv.managementFeePaid) || 0) + (Number(srv.adBudgetPaid) || 0);
+                const sDue = Math.max(0, sVal - sRec);
+                return (
+                  <div key={idx} className="flex justify-between items-center text-[11px] pl-2 border-l-2 border-indigo-400">
+                    <span className="font-semibold text-slate-800">{srv.serviceName}</span>
+                    <span className="font-mono text-slate-600">
+                      {formatINR(sVal)} {sDue > 0 ? <span className="text-amber-700 font-bold">(Due: {formatINR(sDue)})</span> : <span className="text-emerald-700 font-bold">(Paid)</span>}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-          )}
-          {Boolean(onboarding.adBudget || onboarding.adTotalBudget) && (
-            <div className="flex justify-between items-center text-blue-900 text-[11px] pl-2 border-l-2 border-blue-200">
-              <span>Ad Budget:</span>
-              <span className="font-semibold">{formatINR(onboarding.adBudget || onboarding.adTotalBudget || 0)}</span>
-            </div>
+          ) : (
+            <>
+              {(onboarding.managementFee || onboarding.serviceFee) && (
+                <div className="flex justify-between items-center text-indigo-900 text-[11px] pl-2 border-l-2 border-indigo-200">
+                  <span>Management Fee:</span>
+                  <span className="font-semibold">{formatINR(onboarding.managementFee || onboarding.serviceFee || 0)}</span>
+                </div>
+              )}
+              {Boolean(onboarding.adBudget || onboarding.adTotalBudget) && (
+                <div className="flex justify-between items-center text-blue-900 text-[11px] pl-2 border-l-2 border-blue-200">
+                  <span>Ad Budget:</span>
+                  <span className="font-semibold">{formatINR(onboarding.adBudget || onboarding.adTotalBudget || 0)}</span>
+                </div>
+              )}
+            </>
           )}
           <div className="flex justify-between items-center text-slate-600">
             <span>Total Received So Far:</span>

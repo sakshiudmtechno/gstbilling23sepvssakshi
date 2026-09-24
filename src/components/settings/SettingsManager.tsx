@@ -3,6 +3,7 @@ import { BusinessProfile } from '../../types';
 import { INDIAN_STATES, getStateByCode } from '../../utils/gstUtils';
 import { api } from '../../utils/api';
 import { UdmLogo } from '../common/UdmLogo';
+import { toast } from '../common/Toast';
 import {
   Building2,
   CreditCard,
@@ -87,10 +88,11 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
     try {
       await api.updateBusinessProfile(profile);
       setSaveSuccess(true);
+      toast.success('Business settings saved successfully');
       setTimeout(() => setSaveSuccess(false), 2500);
       onRefresh();
     } catch (err: any) {
-      alert(err.message || 'Failed to update settings');
+      toast.error(err.message || 'Failed to update settings');
     } finally {
       setIsSaving(false);
     }

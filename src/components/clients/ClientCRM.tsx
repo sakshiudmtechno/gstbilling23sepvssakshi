@@ -4,6 +4,7 @@ import { formatINR } from '../../utils/gstUtils';
 import { api } from '../../utils/api';
 import { ClientModal } from './ClientModal';
 import { exportToCSV } from '../../utils/pdfGenerator';
+import { toast, showConfirm } from '../common/Toast';
 import {
   Users,
   Search,
@@ -28,13 +29,15 @@ interface ClientCRMProps {
   invoices: Invoice[];
   onCreateInvoiceForClient: (client: Client) => void;
   onRefresh: () => void;
+  onClientSaved?: (client: Client) => void;
 }
 
 export const ClientCRM: React.FC<ClientCRMProps> = ({
   clients,
   invoices,
   onCreateInvoiceForClient,
-  onRefresh
+  onRefresh,
+  onClientSaved
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
@@ -79,26 +82,53 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
   };
 
   const handleSaveClient = async (clientData: Partial<Client>) => {
-    if (editingClient) {
-      await api.updateClient(editingClient.id, clientData);
-    } else {
-      await api.createClient(clientData);
+    try {
+      let saved: Client;
+      if (editingClient) {
+        saved = await api.updateClient(editingClient.id, clientData);
+        toast.success(`Client "${saved.name || clientData.name}" updated successfully`);
+      } else {
+        saved = await api.createClient(clientData);
+        toast.success(`Client "${saved.name || clientData.name}" added successfully`);
+      }
+      setIsModalOpen(false);
+      setEditingClient(null);
+      onClientSaved?.(saved);
+      await onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save client');
+      throw err;
     }
-    onRefresh();
   };
 
-  const handleDeleteClient = async (client: Client) => {
-    if (confirm(`Are you sure you want to delete client "${client.name}"?`)) {
-      try {
-        await api.deleteClient(client.id);
-        if (selectedClientDetail?.id === client.id) {
-          setSelectedClientDetail(null);
+  const handleDeleteClient = async (client: Client, force = false) => {
+    showConfirm({
+      title: force ? 'Force Delete Client?' : 'Delete Client',
+      message: force
+        ? `Warning: Client "${client.name}" is linked to existing invoices, quotes, or recurring billing profiles. Force deleting will remove this client from CRM while keeping past invoices intact. Proceed?`
+        : `Are you sure you want to delete client "${client.name}"? This action cannot be undone.`,
+      confirmText: force ? 'Yes, Force Delete' : 'Delete Client',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await api.deleteClient(client.id, force);
+          if (selectedClientDetail?.id === client.id) {
+            setSelectedClientDetail(null);
+          }
+          toast.success(`Client "${client.name}" deleted successfully`);
+          onRefresh();
+        } catch (err: any) {
+          if (err.conflict) {
+            // Explain dependency conflict and offer force delete confirmation
+            setTimeout(() => {
+              handleDeleteClient(client, true);
+            }, 300);
+          } else {
+            toast.error(err.message || 'Failed to delete client');
+          }
         }
-        onRefresh();
-      } catch (err: any) {
-        alert(err.message || 'Failed to delete client');
       }
-    }
+    });
   };
 
   const handleExportCsv = () => {

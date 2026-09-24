@@ -55,6 +55,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
+  const isAdmin = !currentUser?.role || currentUser.role.toLowerCase().includes('admin') || currentUser.role.toLowerCase() === 'administrator';
+
+  const visibleCoreItems = coreMenuItems.filter(item => {
+    if (!isAdmin && (item.id === 'credit_notes' || item.id === 'expenses')) {
+      return false; // Sales managers don't manage credit notes or company expenses
+    }
+    return true;
+  });
+
+  const visibleAnalysisItems = analysisMenuItems.filter(item => {
+    if (!isAdmin && (item.id === 'settings' || item.id === 'audit_logs')) {
+      return false;
+    }
+    return true;
+  });
+
   const handleItemClick = (id: string) => {
     onSelectTab(id);
     if (onCloseMobile) {
@@ -110,7 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           <div className="space-y-0.5 mt-0.5">
-            {coreMenuItems.map((item) => {
+            {visibleCoreItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
 
@@ -147,7 +163,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           <div className="space-y-0.5 mt-0.5">
-            {analysisMenuItems.map((item) => {
+            {visibleAnalysisItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
 

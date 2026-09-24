@@ -13,16 +13,17 @@ import {
   COMMON_HSN_SAC,
   GST_RATES,
   formatINR,
-  numberToIndianWords,
   isInterStateSupply,
   getFinancialYear,
   calculateBillingPeriod
 } from '../../utils/gstUtils';
+import { calculateInvoiceTotals, numberToIndianWords } from '../../utils/taxCalculator';
 import { api } from '../../utils/api';
 import { InvoicePDFTemplate } from './InvoicePDFTemplate';
 import { downloadElementAsPdf, triggerPrint, printInvoiceElement, getInvoicePdfFilename } from '../../utils/pdfGenerator';
 import { ClientModal } from '../clients/ClientModal';
 import { SendEmailModal } from './SendEmailModal';
+import { toast, showPrompt } from '../common/Toast';
 import {
   Plus,
   Trash2,
@@ -420,56 +421,37 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
     setItems(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Calculations for Entire Invoice
-  const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
-  const totalItemDiscount = items.reduce((sum, item) => sum + item.discountAmount, 0);
+  // Centralized Calculations for Entire Invoice
+  const invoiceCalculation = calculateInvoiceTotals(items, {
+    isInterState,
+    discountType: globalDiscountType,
+    discountValue: Number(globalDiscountValue) || 0,
+    additionalCharges,
+    advanceAmount: Number(advanceAmount) || 0,
+    paymentsTotal: initialInvoice?.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0
+  }, status);
 
-  let globalDiscountAmount = 0;
-  if (globalDiscountType === 'percentage') {
-    globalDiscountAmount = ((subtotal - totalItemDiscount) * (Number(globalDiscountValue) || 0)) / 100;
-  } else {
-    globalDiscountAmount = Number(globalDiscountValue) || 0;
-  }
-
-  // After item discounts, remaining taxable pool before global discount
-  const afterItemDiscount = Math.max(0, subtotal - totalItemDiscount);
-  // After global discount — this is the actual taxable amount
-  const totalTaxableAmount = Math.max(0, afterItemDiscount - globalDiscountAmount);
-
-  // GST-compliant calculation: recalculate taxes on the final discounted amounts
-  // Each item's share of the global discount is proportional to its taxable amount
-  const discountRatio = afterItemDiscount > 0 ? totalTaxableAmount / afterItemDiscount : 0;
-  let totalCgst = 0, totalSgst = 0, totalIgst = 0;
-  items.forEach(item => {
-    const itemDiscountedTaxable = item.taxableAmount * discountRatio;
-    const gstRate = Number(item.gstRate) || 0;
-    const itemGst = (itemDiscountedTaxable * gstRate) / 100;
-    if (isInterState) {
-      totalIgst += itemGst;
-    } else {
-      totalCgst += itemGst / 2;
-      totalSgst += itemGst / 2;
-    }
-  });
-
-  // Round to 2 decimal places
-  totalCgst = Math.round(totalCgst * 100) / 100;
-  totalSgst = Math.round(totalSgst * 100) / 100;
-  totalIgst = Math.round(totalIgst * 100) / 100;
-  const totalGst = Math.round((totalCgst + totalSgst + totalIgst) * 100) / 100;
-
-  const totalAdditionalCharges = additionalCharges.reduce((sum, chg) => sum + chg.amount, 0);
-  const exactGrandTotal = totalTaxableAmount + totalGst + totalAdditionalCharges;
-  const grandTotal = Math.round(exactGrandTotal * 100) / 100;
-  const roundOff = Math.round((grandTotal - exactGrandTotal) * 100) / 100;
-  const totalInWords = numberToIndianWords(grandTotal);
+  const {
+    subtotal,
+    totalItemDiscount,
+    globalDiscountAmount,
+    totalTaxableAmount,
+    totalCgst,
+    totalSgst,
+    totalIgst,
+    totalGst,
+    totalAdditionalCharges,
+    roundOff,
+    grandTotal,
+    totalInWords,
+    amountPaid: totalAmountPaid,
+    balanceDue: calculatedBalanceDue
+  } = invoiceCalculation;
 
   // 30-Day Auto Billing Period Calculation
   const billingInfo = calculateBillingPeriod(billingStartDate || invoiceDate);
   const effectiveAdvance = Math.max(0, Number(advanceAmount) || 0);
   const otherPayments = initialInvoice?.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
-  const totalAmountPaid = effectiveAdvance + otherPayments;
-  const calculatedBalanceDue = Math.max(0, Math.round((grandTotal - totalAmountPaid) * 100) / 100);
 
   // Construct complete invoice object for preview & save
   const currentInvoiceData: Invoice = {
@@ -536,22 +518,17 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
     shippingState,
     shippingStateCode,
     shippingPinCode,
-    items: items.map(item => {
-      const itemDiscountedTaxable = item.taxableAmount * (afterItemDiscount > 0 ? totalTaxableAmount / afterItemDiscount : 0);
-      const itemGst = (itemDiscountedTaxable * (Number(item.gstRate) || 0)) / 100;
-      const itemCgst = isInterState ? 0 : itemGst / 2;
-      const itemSgst = isInterState ? 0 : itemGst / 2;
-      const itemIgst = isInterState ? itemGst : 0;
-      return {
-        ...item,
-        taxableAmount: Math.round(itemDiscountedTaxable * 100) / 100,
-        cgstAmount: Math.round(itemCgst * 100) / 100,
-        sgstAmount: Math.round(itemSgst * 100) / 100,
-        igstAmount: Math.round(itemIgst * 100) / 100,
-        totalGstAmount: Math.round(itemGst * 100) / 100,
-        total: Math.round((itemDiscountedTaxable + itemGst) * 100) / 100
-      };
-    }),
+    items: invoiceCalculation.items.map((item, index) => ({
+      ...item,
+      id: item.id || `item_${index}_${Date.now()}`,
+      description: item.description || '',
+      hsnSac: item.hsnSac || '9983',
+      unit: item.unit || 'NOS',
+      discountType: (item.discountType as 'percentage' | 'fixed') || 'percentage',
+      discountValue: Number(item.discountValue) || 0,
+      discountAmount: Number(item.discountAmount) || 0,
+      gstRate: Number(item.gstRate) || 0
+    })),
     discountType: globalDiscountType,
     discountValue: globalDiscountValue,
     discountAmount: globalDiscountAmount,
@@ -582,11 +559,11 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
   // Save Invoice action
   const handleSave = async (finalize: boolean = false) => {
     if (!selectedClientId) {
-      alert('Please select a client for this invoice.');
+      toast.error('Please select a client for this invoice.');
       return;
     }
     if (items.length === 0 || items.some(i => !i.name.trim() || i.rate <= 0)) {
-      alert('Please add at least one valid invoice item with name and rate.');
+      toast.error('Please add at least one valid invoice item with name and rate.');
       return;
     }
 
@@ -604,11 +581,13 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
         saved = await api.createInvoice(payload);
       }
 
-      setSaveMessage(finalize ? 'Invoice Finalized & Saved!' : 'Draft Saved!');
+      const msg = finalize ? 'Invoice Finalized & Saved!' : 'Draft Saved!';
+      setSaveMessage(msg);
+      toast.success(msg);
       setTimeout(() => setSaveMessage(null), 3000);
       onSaveSuccess(saved);
     } catch (err: any) {
-      alert(err.message || 'Failed to save invoice');
+      toast.error(err.message || 'Failed to save invoice');
     } finally {
       setIsSaving(false);
     }
@@ -650,7 +629,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
       document.body.removeChild(wrapper);
     } catch (err: any) {
       console.error('PDF download error:', err);
-      alert('PDF download failed: ' + (err.message || 'Unknown error. Check browser console (F12) for details.'));
+      toast.error('PDF download failed: ' + (err.message || 'Unknown error. Check browser console (F12) for details.'));
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -662,13 +641,19 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
   };
 
   const handleClientSaved = async (newClientData: Partial<Client>) => {
-    const created = await api.createClient(newClientData);
-    setClients(prev => [created, ...prev]);
-    setSelectedClientId(created.id);
-    setSelectedClient(created);
-    setPlaceOfSupply(created.state || 'Madhya Pradesh');
-    setPlaceOfSupplyCode(created.stateCode || '23');
-    onClientCreated?.(created);
+    try {
+      const created = await api.createClient(newClientData);
+      setClients(prev => [created, ...prev]);
+      setSelectedClientId(created.id);
+      setSelectedClient(created);
+      setPlaceOfSupply(created.state || 'Madhya Pradesh');
+      setPlaceOfSupplyCode(created.stateCode || '23');
+      onClientCreated?.(created);
+      toast.success(`Client "${created.name}" added and selected`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create client');
+      throw err;
+    }
   };
 
   // Expose a ref/effect to open payment modal from parent
@@ -1456,19 +1441,35 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        const chargeName = prompt('Enter charge name (e.g. Delivery / Installation / Setup):', 'Setup & Delivery');
-                        if (chargeName) {
-                          const amountStr = prompt('Enter charge amount (₹):', '500');
-                          const amount = Number(amountStr) || 0;
-                          setAdditionalCharges(prev => [...prev, {
-                            id: `chg_${Date.now()}`,
-                            name: chargeName,
-                            amount,
-                            gstApplicable: false
-                          }]);
-                        }
+                        showPrompt({
+                          title: 'Add Extra Charge',
+                          message: 'Enter charge name (e.g. Delivery / Installation / Setup):',
+                          defaultValue: 'Setup & Delivery',
+                          placeholder: 'Charge name',
+                          confirmText: 'Next',
+                          onConfirm: (chargeName) => {
+                            if (!chargeName.trim()) return;
+                            showPrompt({
+                              title: 'Charge Amount',
+                              message: `Enter amount in ₹ for "${chargeName.trim()}":`,
+                              defaultValue: '500',
+                              placeholder: '500',
+                              confirmText: 'Add Charge',
+                              onConfirm: (amountStr) => {
+                                const amount = Number(amountStr) || 0;
+                                setAdditionalCharges(prev => [...prev, {
+                                  id: `chg_${Date.now()}`,
+                                  name: chargeName.trim(),
+                                  amount,
+                                  gstApplicable: false
+                                }]);
+                                toast.success(`Added charge "${chargeName.trim()}" (₹${amount})`);
+                              }
+                            });
+                          }
+                        });
                       }}
-                      className="w-full px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-semibold text-xs border border-slate-300 flex items-center justify-center gap-1.5 transition-colors"
+                      className="w-full px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-semibold text-xs border border-slate-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" /> Add Extra Charge
                     </button>
