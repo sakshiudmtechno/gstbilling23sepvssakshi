@@ -682,7 +682,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                   {initialInvoice ? `Edit #${invoiceNumber}` : 'Create GST Tax Invoice'}
                 </h1>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase whitespace-nowrap ${
-                  isInterState ? 'bg-indigo-100 text-indigo-800' : 'bg-emerald-100 text-emerald-800'
+                  isInterState ? 'bg-teal-100 text-teal-900' : 'bg-emerald-100 text-emerald-800'
                 }`}>
                   {isInterState ? 'IGST (Inter-State)' : 'CGST + SGST (Intra-State)'}
                 </span>
@@ -708,8 +708,8 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                 <button
                   key={t}
                   onClick={() => setTemplate(t)}
-                  className={`px-2 py-1 rounded capitalize text-xs font-medium transition-all ${
-                    template === t ? 'bg-white text-indigo-950 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  className={`px-2 py-1 rounded capitalize text-xs font-medium transition-all cursor-pointer ${
+                    template === t ? 'bg-white text-teal-950 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {t}
@@ -720,7 +720,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
             <button
               onClick={() => handleSave(false)}
               disabled={isSaving}
-              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50"
+              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
             >
               <Save className="w-3.5 h-3.5 text-slate-500" />
               <span className="hidden sm:inline">Save Draft</span>
@@ -729,20 +729,20 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
             <button
               onClick={handleDownloadPdf}
               disabled={isDownloadingPdf}
-              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50"
+              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
               title="Download PDF"
             >
               {isDownloadingPdf ? (
-                <Loader2 className="w-3.5 h-3.5 text-indigo-600 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 text-teal-700 animate-spin" />
               ) : (
-                <Download className="w-3.5 h-3.5 text-indigo-600" />
+                <Download className="w-3.5 h-3.5 text-teal-700" />
               )}
               <span className="hidden md:inline">{isDownloadingPdf ? 'Generating...' : 'PDF'}</span>
             </button>
 
             <button
               onClick={handlePrintInvoice}
-              className="p-1.5 sm:px-3 sm:py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg flex items-center gap-1 transition-colors"
+              className="p-1.5 sm:px-3 sm:py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
               title="Print"
             >
               <Printer className="w-3.5 h-3.5 text-slate-600" />
@@ -751,17 +751,17 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
 
             <button
               onClick={() => setIsEmailModalOpen(true)}
-              className="p-1.5 sm:px-3 sm:py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg flex items-center gap-1 transition-colors"
+              className="p-1.5 sm:px-3 sm:py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
               title="Send Email"
             >
-              <Send className="w-3.5 h-3.5 text-indigo-600" />
+              <Send className="w-3.5 h-3.5 text-teal-700" />
               <span className="hidden md:inline">Email</span>
             </button>
 
             <button
               onClick={() => handleSave(true)}
               disabled={isSaving}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-indigo-900 hover:bg-indigo-800 rounded-lg shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>{isSaving ? 'Saving...' : 'Finalize & Save'}</span>
@@ -771,18 +771,18 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
 
         {/* Payment / Due Tracker Bar */}
         {initialInvoice && (
-          <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl p-4 text-white flex flex-wrap items-center justify-between gap-3">
+          <div className="bg-gradient-to-r from-slate-850 to-slate-900 rounded-xl p-4 text-white flex flex-wrap items-center justify-between gap-3 border border-slate-750 shadow-2xs">
             <div className="flex items-center gap-4">
               <div>
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Grand Total</span>
                 <p className="text-sm font-bold font-mono">{formatINR(grandTotal)}</p>
               </div>
-              <div className="w-px h-8 bg-slate-600"></div>
+              <div className="w-px h-8 bg-slate-700"></div>
               <div>
                 <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Advance Paid</span>
                 <p className="text-sm font-bold font-mono text-emerald-400">{formatINR(initialInvoice.amountPaid || 0)}</p>
               </div>
-              <div className="w-px h-8 bg-slate-600"></div>
+              <div className="w-px h-8 bg-slate-700"></div>
               <div>
                 <span className="text-[10px] uppercase font-bold text-rose-400 tracking-wider">Balance Due</span>
                 <p className="text-lg font-bold font-mono text-rose-400">{formatINR(Math.max(0, grandTotal - (initialInvoice.amountPaid || 0)))}</p>
@@ -790,7 +790,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
             </div>
             <button
               onClick={() => onRecordPayment?.(initialInvoice!)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
             >
               <CreditCard className="w-3.5 h-3.5" />
               Record Payment / Advance
@@ -803,21 +803,21 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
           <button
             type="button"
             onClick={() => setMobileActiveTab('editor')}
-            className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
               mobileActiveTab === 'editor'
-                ? 'bg-white text-indigo-900 shadow-xs font-bold'
+                ? 'bg-white text-teal-950 shadow-2xs font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <FileEdit className="w-4 h-4 text-indigo-600" />
+            <FileEdit className="w-4 h-4 text-teal-700" />
             <span>Invoice Form & Services</span>
           </button>
           <button
             type="button"
             onClick={() => setMobileActiveTab('preview')}
-            className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
               mobileActiveTab === 'preview'
-                ? 'bg-white text-indigo-900 shadow-xs font-bold'
+                ? 'bg-white text-teal-950 shadow-2xs font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -833,8 +833,8 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
         <div className={`space-y-4 lg:col-span-6 ${mobileActiveTab === 'preview' ? 'hidden lg:block' : 'block'}`}>
           {/* Section 1: General Info & Place of Supply */}
           <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 border-b border-slate-100 pb-2 flex items-center gap-1.5">
-              <Building className="w-3.5 h-3.5 text-indigo-600" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 border-b border-slate-100 pb-2 flex items-center gap-1.5">
+              <Building className="w-3.5 h-3.5 text-teal-700" />
               Invoice Meta & 30-Day Billing Period
             </h2>
 
@@ -848,7 +848,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   placeholder="e.g. INV-2026-001"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono font-bold text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono font-bold text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                 />
               </div>
 
@@ -864,7 +864,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       setBillingStartDate(newDate);
                     }
                   }}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                 />
               </div>
 
@@ -876,7 +876,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                   type="date"
                   value={billingStartDate}
                   onChange={(e) => setBillingStartDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-indigo-50/50 border border-indigo-200 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden font-medium"
+                  className="w-full px-3 py-2 bg-teal-50/50 border border-teal-200 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden font-medium"
                 />
               </div>
 
@@ -886,35 +886,35 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                 />
               </div>
             </div>
 
             {/* Billing Period Auto Calculation Banner */}
-            <div className="p-2.5 bg-indigo-50/60 rounded-lg border border-indigo-100 flex flex-wrap items-center justify-between text-xs gap-2">
+            <div className="p-2.5 bg-teal-50/60 rounded-lg border border-teal-200/70 flex flex-wrap items-center justify-between text-xs gap-2">
               <div className="flex items-center gap-2">
-                <span className="bg-indigo-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="bg-teal-700 text-white font-bold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">
                   30-Day Period
                 </span>
                 <span className="text-slate-600">Service Coverage:</span>
-                <strong className="text-indigo-950 font-semibold font-mono">{billingInfo.periodText}</strong>
+                <strong className="text-teal-950 font-semibold font-mono">{billingInfo.periodText}</strong>
               </div>
-              <span className="text-[11px] text-indigo-700 font-medium">Auto-calculated 30 Days</span>
+              <span className="text-[11px] text-teal-800 font-semibold">Auto-calculated 30 Days</span>
             </div>
           </div>
 
           {/* Section 2: Billed To / Client Selection */}
           <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs space-y-3.5">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-                <Building className="w-3.5 h-3.5 text-indigo-600" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Building className="w-3.5 h-3.5 text-teal-700" />
                 Billed To (Customer Details)
               </h2>
               <button
                 type="button"
                 onClick={() => setIsClientModalOpen(true)}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 hover:underline"
+                className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center gap-1 hover:underline cursor-pointer"
               >
                 <UserPlus className="w-3.5 h-3.5" /> + New Client
               </button>
@@ -925,7 +925,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
               <select
                 value={selectedClientId}
                 onChange={(e) => handleClientChange(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden truncate"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden truncate cursor-pointer"
               >
                 <option value="">-- Choose Existing Client --</option>
                 {clients.map(c => (
@@ -942,7 +942,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                 <p className="text-slate-600">{selectedClient.billingAddress}</p>
                 <p className="text-slate-600">{selectedClient.city}, {selectedClient.state} - {selectedClient.pinCode}</p>
                 <div className="pt-1 flex flex-wrap gap-4 text-slate-700 font-mono text-[11px]">
-                  <span>GSTIN: <strong className="text-indigo-900">{selectedClient.gstin || 'URP'}</strong></span>
+                  <span>GSTIN: <strong className="text-teal-950">{selectedClient.gstin || 'URP'}</strong></span>
                   <span>PAN: <strong>{selectedClient.pan || 'N/A'}</strong></span>
                 </div>
               </div>
@@ -954,7 +954,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
             <div className="flex flex-wrap justify-between items-center gap-2.5 border-b border-slate-100 pb-3">
               <div className="min-w-0">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <Layers className="w-4 h-4 text-indigo-600" />
+                  <Layers className="w-4 h-4 text-teal-700" />
                   Invoice Line Items & Services ({items.length})
                 </h2>
                 <p className="text-[11px] text-slate-500">
@@ -977,7 +977,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       e.target.value = '';
                     }}
                     defaultValue=""
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors outline-hidden pr-7"
+                    className="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors outline-hidden pr-7"
                   >
                     <option value="" disabled>+ Add Service Package...</option>
                     <option value="custom">✨ + Custom / Blank Service</option>
@@ -1001,7 +1001,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                 <button
                   type="button"
                   onClick={addItem}
-                  className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg text-xs font-bold flex items-center gap-1 border border-slate-200 transition-colors"
+                  className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg text-xs font-bold flex items-center gap-1 border border-slate-200 transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" /> Blank Item
                 </button>
@@ -1015,16 +1015,16 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                 const currentPresetId = matchingPreset ? matchingPreset.id : 'custom';
 
                 return (
-                  <div key={item.id || idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3 shadow-2xs">
+                  <div key={item.id || idx} className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 space-y-3 shadow-2xs">
                     {/* Item Top Toolbar */}
                     <div className="flex flex-wrap items-center justify-between gap-2 bg-white p-2 rounded-lg border border-slate-200">
                       <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                        <span className="w-5 h-5 rounded-md bg-indigo-100 text-indigo-800 font-bold text-[11px] flex items-center justify-center shrink-0">
+                        <span className="w-5 h-5 rounded-md bg-teal-100 text-teal-900 font-bold text-[11px] flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
 
                         <label className="text-[11px] font-bold text-slate-600 whitespace-nowrap flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                          <Sparkles className="w-3.5 h-3.5 text-teal-700" />
                           Package:
                         </label>
 
@@ -1038,7 +1038,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                               applyPresetToItem(idx, val);
                             }
                           }}
-                          className="flex-1 min-w-0 px-2.5 py-1 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-200 rounded text-xs font-semibold text-indigo-950 focus:ring-2 focus:ring-indigo-500 outline-hidden truncate"
+                          className="flex-1 min-w-0 px-2.5 py-1 bg-teal-50/50 hover:bg-teal-50 border border-teal-200 rounded text-xs font-semibold text-teal-950 focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden truncate cursor-pointer"
                         >
                           <option value="custom">✨ Custom / Freeform Service</option>
                           <optgroup label="🌐 Website Development">
@@ -1062,7 +1062,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                         <button
                           type="button"
                           onClick={() => duplicateItem(idx)}
-                          className="px-2 py-1 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded text-xs font-medium flex items-center gap-1 transition-colors"
+                          className="px-2 py-1 text-slate-600 hover:text-teal-700 hover:bg-slate-100 rounded text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
                           title="Duplicate Row"
                         >
                           <Copy className="w-3.5 h-3.5" />
@@ -1072,7 +1072,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                           type="button"
                           onClick={() => removeItem(idx)}
                           disabled={items.length <= 1}
-                          className="px-2 py-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded text-xs font-medium flex items-center gap-1 transition-colors disabled:opacity-30"
+                          className="px-2 py-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded text-xs font-medium flex items-center gap-1 transition-colors disabled:opacity-30 cursor-pointer"
                           title="Delete Row"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1092,7 +1092,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                           placeholder="e.g. 🌐 Basic Website or Custom IT Service"
                           value={item.name}
                           onChange={(e) => updateItemField(idx, 'name', e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                         />
                       </div>
 
@@ -1108,7 +1108,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                           placeholder="Key deliverables, scope of work, features included..."
                           value={item.description || ''}
                           onChange={(e) => updateItemField(idx, 'description', e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden resize-y min-h-[52px]"
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden resize-y min-h-[52px]"
                         />
                       </div>
                     </div>
@@ -1123,7 +1123,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                           placeholder="0.00"
                           value={item.rate}
                           onChange={(e) => updateItemField(idx, 'rate', Number(e.target.value))}
-                          className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg font-mono text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                          className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg font-mono text-xs font-bold text-slate-900 focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                         />
                       </div>
 
@@ -1135,7 +1135,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                           step="1"
                           value={item.quantity}
                           onChange={(e) => updateItemField(idx, 'quantity', Number(e.target.value))}
-                          className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg font-mono text-xs text-slate-900 focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                          className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg font-mono text-xs text-slate-900 focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                         />
                       </div>
 
@@ -1144,7 +1144,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                         <select
                           value={item.unit || 'NOS'}
                           onChange={(e) => updateItemField(idx, 'unit', e.target.value)}
-                          className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                          className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden cursor-pointer"
                         >
                           <option value="NOS">NOS</option>
                           <option value="MONTH">MONTH</option>
@@ -1160,7 +1160,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                         <select
                           value={item.gstRate}
                           onChange={(e) => updateItemField(idx, 'gstRate', Number(e.target.value))}
-                          className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                          className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-teal-950 focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden cursor-pointer"
                         >
                           {GST_RATES.map(r => (
                             <option key={r} value={r}>{r}% GST</option>
@@ -1170,7 +1170,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
 
                       <div>
                         <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Total (incl. GST)</label>
-                        <div className="px-2 py-1.5 bg-indigo-50 border border-indigo-200 rounded-lg text-xs font-bold font-mono text-indigo-950 text-right truncate">
+                        <div className="px-2 py-1.5 bg-teal-50 border border-teal-200 rounded-lg text-xs font-bold font-mono text-teal-950 text-right truncate">
                           {formatINR(item.total)}
                         </div>
                       </div>
@@ -1185,14 +1185,14 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
           {(() => {
             const adStats = calculateAdBudgetStats(adPlatform, adDailyBudget, adDays);
             return (
-              <div className="bg-gradient-to-br from-violet-50/80 via-indigo-50/40 to-purple-50/60 rounded-xl border border-violet-200/90 shadow-2xs overflow-hidden">
-                <div className="px-4 py-3 bg-white/70 border-b border-violet-100 flex items-center justify-between">
+              <div className="bg-gradient-to-br from-teal-50/70 via-slate-50 to-teal-50/50 rounded-xl border border-teal-200/90 shadow-2xs overflow-hidden">
+                <div className="px-4 py-3 bg-white/70 border-b border-teal-100 flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="p-1 bg-violet-600 text-white rounded-md shrink-0">
+                    <div className="p-1 bg-teal-700 text-white rounded-md shrink-0">
                       <Target className="w-3.5 h-3.5" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-xs font-bold text-violet-950 uppercase tracking-wider truncate">
+                      <h3 className="text-xs font-bold text-teal-950 uppercase tracking-wider truncate">
                         Meta &amp; Google Ads Budget Estimator
                       </h3>
                       <p className="text-[10px] text-slate-500 truncate hidden sm:block">
@@ -1203,7 +1203,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAdCalculator(!showAdCalculator)}
-                    className="text-xs font-bold text-violet-700 hover:text-violet-900 bg-white hover:bg-violet-50 px-2.5 py-1 rounded-lg border border-violet-200 shadow-2xs transition-all shrink-0"
+                    className="text-xs font-bold text-teal-800 hover:text-teal-950 bg-white hover:bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200 shadow-2xs transition-all shrink-0 cursor-pointer"
                   >
                     {showAdCalculator ? 'Collapse ▲' : 'Expand Calculator ▼'}
                   </button>
@@ -1218,9 +1218,9 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                         <button
                           type="button"
                           onClick={() => setAdPlatform('meta')}
-                          className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                          className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                             adPlatform === 'meta'
-                              ? 'bg-indigo-600 text-white shadow-xs'
+                              ? 'bg-teal-700 text-white shadow-2xs'
                               : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
                           }`}
                         >
@@ -1229,9 +1229,9 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                         <button
                           type="button"
                           onClick={() => setAdPlatform('google')}
-                          className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                          className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                             adPlatform === 'google'
-                              ? 'bg-indigo-600 text-white shadow-xs'
+                              ? 'bg-teal-700 text-white shadow-2xs'
                               : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
                           }`}
                         >
@@ -1243,10 +1243,10 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                     {/* Daily Budget & Duration Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Daily Budget */}
-                      <div className="bg-white/80 p-2.5 rounded-lg border border-violet-100">
+                      <div className="bg-white/80 p-2.5 rounded-lg border border-teal-100">
                         <div className="flex justify-between items-center mb-1">
                           <label className="text-[11px] font-bold text-slate-700">Daily Budget:</label>
-                          <span className="text-xs font-mono font-bold text-violet-700">₹{adDailyBudget}/day</span>
+                          <span className="text-xs font-mono font-bold text-teal-800">₹{adDailyBudget}/day</span>
                         </div>
                         <input
                           type="number"
@@ -1254,7 +1254,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                           step={50}
                           value={adDailyBudget}
                           onChange={e => setAdDailyBudget(Math.max(1, Number(e.target.value)))}
-                          className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-md text-xs font-mono font-bold mb-1.5 outline-hidden focus:border-violet-500"
+                          className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-md text-xs font-mono font-bold mb-1.5 outline-hidden focus:border-teal-700"
                           placeholder="200"
                         />
                         <div className="flex flex-wrap gap-1">
@@ -1263,10 +1263,10 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                               key={amt}
                               type="button"
                               onClick={() => setAdDailyBudget(amt)}
-                              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${
                                 adDailyBudget === amt
-                                  ? 'bg-violet-600 text-white font-bold'
-                                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-violet-50'
+                                  ? 'bg-teal-700 text-white font-bold'
+                                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-teal-50'
                               }`}
                             >
                               ₹{amt}
@@ -1276,17 +1276,17 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       </div>
 
                       {/* Duration Days */}
-                      <div className="bg-white/80 p-2.5 rounded-lg border border-violet-100">
+                      <div className="bg-white/80 p-2.5 rounded-lg border border-teal-100">
                         <div className="flex justify-between items-center mb-1">
                           <label className="text-[11px] font-bold text-slate-700">Duration (Days):</label>
-                          <span className="text-xs font-mono font-bold text-violet-700">{adDays} Days</span>
+                          <span className="text-xs font-mono font-bold text-teal-800">{adDays} Days</span>
                         </div>
                         <input
                           type="number"
                           min={1}
                           value={adDays}
                           onChange={e => setAdDays(Math.max(1, Number(e.target.value)))}
-                          className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-md text-xs font-mono font-bold mb-1.5 outline-hidden focus:border-violet-500"
+                          className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-md text-xs font-mono font-bold mb-1.5 outline-hidden focus:border-teal-700"
                           placeholder="15"
                         />
                         <div className="flex flex-wrap gap-1">
@@ -1295,10 +1295,10 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                               key={d}
                               type="button"
                               onClick={() => setAdDays(d)}
-                              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${
                                 adDays === d
-                                  ? 'bg-violet-600 text-white font-bold'
-                                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-violet-50'
+                                  ? 'bg-teal-700 text-white font-bold'
+                                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-teal-50'
                               }`}
                             >
                               {d}d
@@ -1309,28 +1309,28 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                     </div>
 
                     {/* Calculated Outcome & Add button */}
-                    <div className="bg-white p-3 rounded-xl border border-violet-200 space-y-2.5">
+                    <div className="bg-white p-3 rounded-xl border border-teal-200 space-y-2.5">
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-slate-600 font-medium">Calculated Ad Spend:</span>
-                        <span className="font-mono font-bold text-sm text-violet-950">
-                          ₹{adDailyBudget.toLocaleString('en-IN')} × {adDays}d = <span className="text-indigo-600 font-bold">₹{adStats.totalBudget.toLocaleString('en-IN')}</span>
+                        <span className="font-mono font-bold text-sm text-teal-950">
+                          ₹{adDailyBudget.toLocaleString('en-IN')} × {adDays}d = <span className="text-teal-700 font-bold">₹{adStats.totalBudget.toLocaleString('en-IN')}</span>
                         </span>
                       </div>
                       
-                      <div className="bg-violet-50/70 p-2 rounded-lg border border-violet-100 text-xs">
-                        <div className="flex items-center gap-1.5 text-violet-950 font-bold mb-0.5 text-[11px]">
-                          <TrendingUp className="w-3.5 h-3.5 text-violet-600" />
+                      <div className="bg-teal-50/70 p-2 rounded-lg border border-teal-100 text-xs">
+                        <div className="flex items-center gap-1.5 text-teal-950 font-bold mb-0.5 text-[11px]">
+                          <TrendingUp className="w-3.5 h-3.5 text-teal-700" />
                           <span>Estimated Leads Proportion:</span>
                         </div>
                         <p className="text-slate-700 text-[11px] leading-relaxed">
-                          ~<strong className="text-violet-900 font-bold">{adStats.dailyMinLeads}–{adStats.dailyMaxLeads} leads/day</strong> ({adStats.totalMinLeads}–{adStats.totalMaxLeads} leads across {adDays} days) based on niche &amp; competition.
+                          ~<strong className="text-teal-900 font-bold">{adStats.dailyMinLeads}–{adStats.dailyMaxLeads} leads/day</strong> ({adStats.totalMinLeads}–{adStats.totalMaxLeads} leads across {adDays} days) based on niche &amp; competition.
                         </p>
                       </div>
 
                       <button
                         type="button"
                         onClick={handleAddAdCampaignToInvoice}
-                        className="w-full py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all"
+                        className="w-full py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                       >
                         <Plus className="w-4 h-4" />
                         Add This Campaign to Line Items (₹{adStats.totalBudget.toLocaleString('en-IN')})
@@ -1361,7 +1361,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       </span>
                     )}
                     {globalDiscountValue > 0 && (
-                      <span className="text-[10px] font-normal normal-case bg-indigo-100 text-indigo-800 font-mono px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] font-normal normal-case bg-teal-100 text-teal-900 font-mono px-1.5 py-0.5 rounded">
                         Disc: {globalDiscountValue}{globalDiscountType === 'percentage' ? '%' : '₹'}
                       </span>
                     )}
@@ -1384,7 +1384,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                     e.stopPropagation();
                     setShowDiscountsAndCharges(!showDiscountsAndCharges);
                   }}
-                  className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs transition-all"
+                  className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs transition-all cursor-pointer"
                 >
                   {showDiscountsAndCharges ? 'Collapse ▲' : 'Expand ▼'}
                 </button>
@@ -1559,7 +1559,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       type="checkbox"
                       checked={showBankDetails}
                       onChange={(e) => setShowBankDetails(e.target.checked)}
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
+                      className="rounded text-teal-700 focus:ring-teal-700"
                     />
                     Show Bank Details on Invoice
                   </label>
@@ -1569,7 +1569,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       type="checkbox"
                       checked={showUpiQr}
                       onChange={(e) => setShowUpiQr(e.target.checked)}
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
+                      className="rounded text-teal-700 focus:ring-teal-700"
                     />
                     Show UPI QR Code
                   </label>
@@ -1582,7 +1582,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       rows={2}
                       value={terms}
                       onChange={(e) => setTerms(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden resize-y"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden resize-y"
                     />
                   </div>
 
@@ -1592,7 +1592,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       type="text"
                       value={customerNotes}
                       onChange={(e) => setCustomerNotes(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                     />
                   </div>
 
@@ -1603,7 +1603,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       placeholder="Only visible inside CRM dashboard..."
                       value={internalNotes}
                       onChange={(e) => setInternalNotes(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                     />
                   </div>
                 </div>
@@ -1616,7 +1616,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
         <div className={`space-y-3 lg:col-span-6 ${isFullscreenPreview ? '!col-span-12' : ''} ${
           mobileActiveTab === 'editor' ? 'hidden lg:block' : 'block'
         }`}>
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-2xs border border-slate-800">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs font-bold tracking-wide">Live A4 PDF Preview</span>
@@ -1624,11 +1624,11 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
 
             <div className="flex items-center gap-2">
               {/* Zoom Controls */}
-              <div className="flex items-center bg-slate-800 px-1.5 py-0.5 rounded-lg text-xs gap-1">
+              <div className="flex items-center bg-slate-800 px-1.5 py-0.5 rounded-lg text-xs gap-1 border border-slate-700">
                 <button
                   type="button"
                   onClick={() => setPdfZoom(z => Math.max(0.5, z - 0.1))}
-                  className="p-1 hover:text-indigo-300 text-slate-400"
+                  className="p-1 hover:text-teal-300 text-slate-400 cursor-pointer"
                   title="Zoom Out"
                 >
                   <ZoomOut className="w-3.5 h-3.5" />
@@ -1639,7 +1639,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                 <button
                   type="button"
                   onClick={() => setPdfZoom(z => Math.min(1.5, z + 0.1))}
-                  className="p-1 hover:text-indigo-300 text-slate-400"
+                  className="p-1 hover:text-teal-300 text-slate-400 cursor-pointer"
                   title="Zoom In"
                 >
                   <ZoomIn className="w-3.5 h-3.5" />
@@ -1647,7 +1647,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                 <button
                   type="button"
                   onClick={() => setPdfZoom(1)}
-                  className="p-1 hover:text-indigo-300 text-slate-400 text-[10px]"
+                  className="p-1 hover:text-teal-300 text-slate-400 text-[10px] cursor-pointer"
                   title="Reset Zoom"
                 >
                   <RotateCcw className="w-3 h-3" />
@@ -1656,7 +1656,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
 
               <button
                 onClick={() => setIsFullscreenPreview(!isFullscreenPreview)}
-                className="text-slate-300 hover:text-white p-1 rounded hover:bg-white/10 text-xs flex items-center gap-1"
+                className="text-slate-300 hover:text-white p-1 rounded hover:bg-white/10 text-xs flex items-center gap-1 cursor-pointer"
                 title={isFullscreenPreview ? 'Exit Fullscreen' : 'Preview Fullscreen'}
               >
                 {isFullscreenPreview ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}

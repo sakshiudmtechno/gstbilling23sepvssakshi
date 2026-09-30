@@ -206,7 +206,7 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
               setEditingClient(null);
               setIsModalOpen(true);
             }}
-            className="px-4 py-2 bg-indigo-900 hover:bg-indigo-800 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 transition-colors shadow-sm"
+            className="px-4 py-2 bg-teal-800 hover:bg-teal-900 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add New Client
@@ -223,7 +223,7 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
             placeholder="Search by company name, contact, GSTIN, city or phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-indigo-600 outline-hidden font-medium"
+            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden font-medium"
           />
         </div>
 
@@ -231,7 +231,7 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
           <select
             value={stateFilter}
             onChange={(e) => setStateFilter(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-indigo-600 outline-hidden"
+            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden cursor-pointer"
           >
             <option value="all">All States & Territories</option>
             {uniqueStates.map(s => (
@@ -257,13 +257,13 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
                   onClick={() => setSelectedClientDetail(client)}
                   className={`bg-white rounded-xl border p-4 transition-all cursor-pointer hover:shadow-md ${
                     isSelected
-                      ? 'border-indigo-600 ring-2 ring-indigo-600/10 shadow-xs'
+                      ? 'border-teal-700 ring-2 ring-teal-700/10 shadow-2xs'
                       : 'border-slate-200 hover:border-slate-300 shadow-2xs'
                   }`}
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-900 font-bold">
+                      <div className="w-10 h-10 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-900 font-bold">
                         {client.name.charAt(0)}
                       </div>
                       <div>
@@ -286,7 +286,7 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
 
                   <div className="mt-3 pt-3 border-t border-slate-100 text-xs space-y-1">
                     <p className="text-slate-700 font-mono">
-                      GSTIN: <span className="font-bold text-indigo-950">{client.gstin || 'Unregistered'}</span>
+                      GSTIN: <span className="font-bold text-teal-950">{client.gstin || 'Unregistered'}</span>
                     </p>
                     {client.contactPerson && (
                       <p className="text-slate-600">Contact: {client.contactPerson} ({client.phone})</p>
@@ -319,7 +319,7 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
                         e.stopPropagation();
                         onCreateInvoiceForClient(client);
                       }}
-                      className="text-indigo-600 font-semibold hover:underline flex items-center gap-1"
+                      className="text-teal-700 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" /> Create Invoice
                     </button>
@@ -332,7 +332,7 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
                           setEditingClient(client);
                           setIsModalOpen(true);
                         }}
-                        className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                        className="p-1 text-slate-400 hover:text-teal-700 rounded cursor-pointer transition-colors"
                         title="Edit Client"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -343,7 +343,7 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
                           e.stopPropagation();
                           handleDeleteClient(client);
                         }}
-                        className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
                         title="Delete Client"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -358,14 +358,14 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
 
         {/* Selected Client Detail Card Drawer */}
         {selectedClientDetail && (
-          <div className="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 animate-in fade-in">
+          <div className="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-2xs space-y-4 animate-in fade-in">
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div>
-                <span className="text-[10px] uppercase font-bold text-indigo-600 tracking-wider">Client Profile</span>
+                <span className="text-[10px] uppercase font-bold text-teal-700 tracking-wider">Client Profile</span>
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-lg font-bold text-slate-900">{selectedClientDetail.name}</h2>
                   {selectedClientDetail.clientNumber && (
-                    <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-bold border border-indigo-100">
+                    <span className="text-xs font-mono bg-teal-50 text-teal-800 px-2 py-0.5 rounded-md font-bold border border-teal-100">
                       {selectedClientDetail.clientNumber}
                     </span>
                   )}
@@ -376,7 +376,7 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
               </div>
               <button
                 onClick={() => setSelectedClientDetail(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -400,9 +400,9 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
                       <span className="text-rose-700 block text-[11px]">Outstanding Amount</span>
                       <span className="font-bold text-rose-800 text-sm font-mono">{formatINR(stats.outstanding)}</span>
                     </div>
-                    <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-                      <span className="text-indigo-700 block text-[11px]">Total Invoices</span>
-                      <span className="font-bold text-indigo-900 text-sm">{stats.totalInvoices} Invoices</span>
+                    <div className="p-3 bg-teal-50 rounded-lg border border-teal-100">
+                      <span className="text-teal-800 block text-[11px]">Total Invoices</span>
+                      <span className="font-bold text-teal-950 text-sm">{stats.totalInvoices} Invoices</span>
                     </div>
                   </div>
 
@@ -426,7 +426,7 @@ export const ClientCRM: React.FC<ClientCRMProps> = ({
                       <p className="font-bold text-slate-900 text-xs">Invoice History</p>
                       <button
                         onClick={() => onCreateInvoiceForClient(selectedClientDetail)}
-                        className="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1"
+                        className="text-xs font-semibold text-teal-700 hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" /> New Invoice
                       </button>

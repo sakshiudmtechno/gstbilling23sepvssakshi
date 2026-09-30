@@ -266,12 +266,12 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-slate-900">Recurring Invoices & AMC</h1>
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Recurring Invoices & AMC</h1>
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200">
               {recurringInvoices.length} Active Schedules
             </span>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 mt-0.5">
             Automate weekly, monthly, quarterly, half-yearly, or annual AMC retainer billing with GST compliance
           </p>
         </div>
@@ -283,7 +283,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
               setSelectedClientId(clients[0].id);
             }
           }}
-          className="px-4 py-2 bg-indigo-900 hover:bg-indigo-800 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 transition-colors shadow-sm"
+          className="px-4 py-2 bg-teal-800 hover:bg-teal-900 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Setup Recurring Schedule
@@ -291,8 +291,8 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
       </div>
 
       {recurringInvoices.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
-          <div className="w-12 h-12 bg-indigo-50 text-indigo-700 rounded-full flex items-center justify-center mx-auto">
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3 shadow-2xs">
+          <div className="w-12 h-12 bg-teal-50 text-teal-700 rounded-full flex items-center justify-center mx-auto">
             <Repeat className="w-6 h-6" />
           </div>
           <h3 className="font-bold text-slate-900 text-sm">No recurring subscriptions yet</h3>
@@ -301,7 +301,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
           </p>
           <button
             onClick={() => setIsCreating(true)}
-            className="px-4 py-2 bg-indigo-900 hover:bg-indigo-800 rounded-lg text-xs font-semibold text-white inline-flex items-center gap-1.5"
+            className="px-4 py-2 bg-teal-800 hover:bg-teal-900 rounded-lg text-xs font-semibold text-white inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
           >
             <Plus className="w-4 h-4" /> Create First Schedule
           </button>
@@ -317,7 +317,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                 <div className="space-y-2.5">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 bg-indigo-50 text-indigo-700 rounded-lg shrink-0">
+                      <div className="p-2 bg-teal-50 text-teal-800 rounded-lg shrink-0">
                         <Repeat className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
@@ -349,7 +349,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500">Next Scheduled:</span>
-                      <span className="font-bold font-mono text-indigo-900">{rec.nextInvoiceDate || rec.startDate}</span>
+                      <span className="font-bold font-mono text-teal-950">{rec.nextInvoiceDate || rec.startDate}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500">Items:</span>
@@ -368,7 +368,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleToggleStatus(rec)}
-                      className="text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1 p-1 hover:bg-slate-100 rounded transition-colors"
+                      className="text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1 p-1 hover:bg-slate-100 rounded transition-colors cursor-pointer"
                       title={rec.status === 'active' ? 'Pause automatic generation' : 'Resume schedule'}
                     >
                       {rec.status === 'active' ? <Pause className="w-3.5 h-3.5 text-amber-600" /> : <Play className="w-3.5 h-3.5 text-emerald-600" />}
@@ -377,7 +377,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
 
                     <button
                       onClick={() => handleDelete(rec)}
-                      className="text-slate-400 hover:text-rose-600 p-1 hover:bg-rose-50 rounded transition-colors"
+                      className="text-slate-400 hover:text-rose-600 p-1 hover:bg-rose-50 rounded transition-colors cursor-pointer"
                       title="Delete schedule"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -386,7 +386,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
 
                   <button
                     onClick={() => handleGenerateNow(rec)}
-                    className="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-md font-bold text-xs flex items-center gap-1 transition-colors"
+                    className="px-3 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-md font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     Generate Now <ArrowRight className="w-3 h-3" />
                   </button>
@@ -401,20 +401,20 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
       {isCreating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden border border-slate-200 my-8">
-            <div className="bg-indigo-950 px-6 py-4 text-white flex justify-between items-center">
+            <div className="bg-slate-900 px-6 py-4 text-white flex justify-between items-center">
               <div>
                 <h2 className="text-base font-bold flex items-center gap-2">
-                  <Repeat className="w-4 h-4 text-indigo-300" />
+                  <Repeat className="w-4 h-4 text-teal-400" />
                   New Recurring Subscription
                 </h2>
-                <p className="text-xs text-indigo-200">
+                <p className="text-xs text-teal-200">
                   Configure automated GST-compliant recurring retainer schedules & AMC contracts
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCreating(false)}
-                className="text-indigo-200 hover:text-white p-1 rounded-lg hover:bg-indigo-900/50 transition-colors"
+                className="text-teal-200 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -433,7 +433,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="e.g. Monthly Cloud & Web Server Maintenance AMC"
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                   />
                 </div>
 
@@ -445,7 +445,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                     required
                     value={selectedClientId}
                     onChange={(e) => setSelectedClientId(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden cursor-pointer"
                   >
                     <option value="">-- Choose Client --</option>
                     {clients.map(c => (
@@ -457,7 +457,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                   {selectedClient && (
                     <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 px-1">
                       <span>Place of Supply: {selectedClient.state} ({selectedClient.stateCode})</span>
-                      <span className={`font-semibold ${isInterState ? 'text-amber-700' : 'text-indigo-700'}`}>
+                      <span className={`font-semibold ${isInterState ? 'text-amber-700' : 'text-teal-800'}`}>
                         {isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}
                       </span>
                     </div>
@@ -472,7 +472,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                     <select
                       value={frequency}
                       onChange={(e) => setFrequency(e.target.value as any)}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden cursor-pointer"
                     >
                       {FREQUENCY_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>
@@ -490,7 +490,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                       required
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                     />
                   </div>
                 </div>
@@ -501,7 +501,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-indigo-700" />
+                      <Layers className="w-3.5 h-3.5 text-teal-800" />
                       Recurring Service Line Items
                     </h3>
                     <p className="text-[11px] text-slate-500">
@@ -511,7 +511,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                   <button
                     type="button"
                     onClick={handleAddItem}
-                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 rounded-md font-semibold text-[11px] flex items-center gap-1 border border-indigo-200 transition-colors"
+                    className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-md font-semibold text-[11px] flex items-center gap-1 border border-teal-200 transition-colors cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" /> Add Service Item
                   </button>
@@ -630,7 +630,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                             <span className="font-mono font-semibold text-slate-800">{formatINR(lineTaxable)}</span>
                             <span className="mx-1">|</span>
                             <span>Total: </span>
-                            <span className="font-mono font-bold text-indigo-900">{formatINR(lineTotal)}</span>
+                            <span className="font-mono font-bold text-teal-950">{formatINR(lineTotal)}</span>
                           </div>
                         </div>
                       </div>
@@ -640,7 +640,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
               </div>
 
               {/* GST Financial Summary Card */}
-              <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-2">
+              <div className="bg-teal-50/50 p-4 rounded-xl border border-teal-100 space-y-2">
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-600">Taxable Subtotal:</span>
                   <span className="font-mono font-semibold text-slate-900">{formatINR(calculations.subtotal)}</span>
@@ -649,17 +649,17 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                 {isInterState ? (
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-600">Integrated GST (IGST):</span>
-                    <span className="font-mono font-semibold text-indigo-900">{formatINR(calculations.igst)}</span>
+                    <span className="font-mono font-semibold text-teal-950">{formatINR(calculations.igst)}</span>
                   </div>
                 ) : (
                   <>
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-600">Central GST (CGST):</span>
-                      <span className="font-mono font-semibold text-indigo-900">{formatINR(calculations.cgst)}</span>
+                      <span className="font-mono font-semibold text-teal-950">{formatINR(calculations.cgst)}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-600">State GST (SGST):</span>
-                      <span className="font-mono font-semibold text-indigo-900">{formatINR(calculations.sgst)}</span>
+                      <span className="font-mono font-semibold text-teal-950">{formatINR(calculations.sgst)}</span>
                     </div>
                   </>
                 )}
@@ -671,14 +671,14 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                   </div>
                 )}
 
-                <div className="pt-2 border-t border-indigo-200 flex justify-between items-center">
+                <div className="pt-2 border-t border-teal-200 flex justify-between items-center">
                   <div>
                     <span className="font-bold text-slate-900 text-sm">Total Billed Each Cycle:</span>
-                    <span className="block text-[11px] text-indigo-800 font-medium capitalize">
+                    <span className="block text-[11px] text-teal-800 font-medium capitalize">
                       {FREQUENCY_OPTIONS.find(f => f.value === frequency)?.label}
                     </span>
                   </div>
-                  <span className="font-bold font-mono text-indigo-950 text-base">
+                  <span className="font-bold font-mono text-teal-950 text-base">
                     {formatINR(calculations.grandTotal)}
                   </span>
                 </div>
@@ -691,7 +691,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                   rows={2}
                   value={terms}
                   onChange={(e) => setTerms(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden resize-y"
                   placeholder="Terms appearing on each recurring invoice..."
                 />
               </div>
@@ -702,14 +702,14 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => setIsCreating(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 bg-indigo-900 hover:bg-indigo-800 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition-colors"
+                  className="px-5 py-2 bg-teal-800 hover:bg-teal-900 disabled:opacity-50 text-white font-bold rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Repeat className="w-3.5 h-3.5" />
                   {isSubmitting ? 'Saving...' : 'Save Schedule'}

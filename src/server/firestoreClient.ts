@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import defaultFirebaseConfig from '../../firebase-applet-config.json';
 
 // Load config
 let config: {
@@ -7,19 +8,24 @@ let config: {
   apiKey: string;
   firestoreDatabaseId: string;
 } = {
-  projectId: 'gen-lang-client-0486946771',
-  apiKey: '',
-  firestoreDatabaseId: '(default)'
+  projectId: process.env.FIREBASE_PROJECT_ID || defaultFirebaseConfig.projectId || 'gen-lang-client-0486946771',
+  apiKey: process.env.FIREBASE_API_KEY || defaultFirebaseConfig.apiKey || '',
+  firestoreDatabaseId: process.env.FIREBASE_DATABASE_ID || defaultFirebaseConfig.firestoreDatabaseId || '(default)'
 };
 
 try {
   const cfgPath = path.join(process.cwd(), 'firebase-applet-config.json');
   if (fs.existsSync(cfgPath)) {
     const raw = fs.readFileSync(cfgPath, 'utf-8');
-    config = JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    config = {
+      projectId: process.env.FIREBASE_PROJECT_ID || parsed.projectId || config.projectId,
+      apiKey: process.env.FIREBASE_API_KEY || parsed.apiKey || config.apiKey,
+      firestoreDatabaseId: process.env.FIREBASE_DATABASE_ID || parsed.firestoreDatabaseId || config.firestoreDatabaseId
+    };
   }
 } catch (e) {
-  console.warn('Could not read firebase-applet-config.json:', e);
+  console.warn('Could not read firebase-applet-config.json from cwd, using bundled config/env:', e);
 }
 
 // Check for Service Account Key (for Hostinger and custom servers)

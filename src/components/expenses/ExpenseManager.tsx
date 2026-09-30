@@ -119,7 +119,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
           </button>
           <button
             onClick={() => setIsCreating(true)}
-            className="px-4 py-2 bg-indigo-900 hover:bg-indigo-800 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 shadow-sm"
+            className="px-4 py-2 bg-teal-800 hover:bg-teal-900 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add Expense
@@ -134,7 +134,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
             <span className="text-xs font-bold text-slate-500 uppercase">Total Business Expenses</span>
             <p className="text-2xl font-bold font-mono text-slate-900 mt-1">{formatINR(totalExpense)}</p>
           </div>
-          <div className="p-3 bg-indigo-50 text-indigo-700 rounded-xl">
+          <div className="p-3 bg-teal-50 text-teal-800 rounded-xl">
             <Receipt className="w-6 h-6" />
           </div>
         </div>
@@ -236,12 +236,12 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
       {isCreating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
-            <div className="bg-indigo-950 px-6 py-4 text-white flex justify-between items-center">
+            <div className="bg-slate-900 px-6 py-4 text-white flex justify-between items-center">
               <div>
                 <h2 className="text-base font-bold">Record Expense & ITC</h2>
-                <p className="text-xs text-indigo-200">Record purchase with GST invoice details</p>
+                <p className="text-xs text-teal-200">Record purchase with GST invoice details</p>
               </div>
-              <button onClick={() => setIsCreating(false)} className="text-indigo-200 hover:text-white">
+              <button onClick={() => setIsCreating(false)} className="text-teal-200 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -255,7 +255,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
                   placeholder="e.g. AWS Cloud Infrastructure Billing"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                 />
               </div>
 
@@ -266,7 +266,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
                   placeholder="e.g. Server hosting charges for client campaigns & internal CRM"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                 />
               </div>
 
@@ -276,7 +276,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden cursor-pointer"
                   >
                     <option value="Software & Cloud">Software & Cloud</option>
                     <option value="Office Rent">Office Rent</option>
@@ -293,7 +293,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                   />
                 </div>
               </div>
@@ -307,7 +307,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
                     placeholder="e.g. Amazon Web Services"
                     value={vendorName}
                     onChange={(e) => setVendorName(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                   />
                 </div>
                 <div>
@@ -318,7 +318,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
                     placeholder="15-digit GSTIN"
                     value={vendorGstin}
                     onChange={(e) => setVendorGstin(e.target.value.toUpperCase())}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                   />
                 </div>
               </div>
@@ -335,7 +335,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
                       setAmount(v);
                       setGstAmount(Math.round(v * 0.18));
                     }}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-xs font-bold"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-xs font-bold focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                   />
                 </div>
                 <div>
@@ -345,7 +345,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
                     required
                     value={gstAmount}
                     onChange={(e) => setGstAmount(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-xs font-bold"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-xs font-bold focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                   />
                 </div>
               </div>
@@ -356,7 +356,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
                   id="itcCheck"
                   checked={itcEligible}
                   onChange={(e) => setItcEligible(e.target.checked)}
-                  className="rounded text-indigo-600"
+                  className="rounded text-teal-800 focus:ring-teal-700/20"
                 />
                 <label htmlFor="itcCheck" className="text-xs font-semibold text-slate-800 cursor-pointer">
                   Eligible for GST Input Tax Credit (ITC Claim)
@@ -364,8 +364,8 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ expenses, onRefr
               </div>
 
               <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
-                <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-indigo-900 hover:bg-indigo-800 text-white font-bold rounded-lg shadow-sm">Save Expense</button>
+                <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white font-bold rounded-lg shadow-2xs cursor-pointer">Save Expense</button>
               </div>
             </form>
           </div>

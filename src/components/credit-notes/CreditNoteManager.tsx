@@ -149,13 +149,13 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Credit Notes / Debit Notes</h1>
-          <p className="text-xs text-slate-500">Manage tax adjustments, sales returns, and revised rate credits</p>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Credit Notes / Debit Notes</h1>
+          <p className="text-xs text-slate-500 mt-0.5">Manage tax adjustments, sales returns, and revised rate credits</p>
         </div>
 
         <button
           onClick={() => setIsCreating(true)}
-          className="px-4 py-2 bg-indigo-900 hover:bg-indigo-800 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 transition-colors shadow-sm"
+          className="px-4 py-2 bg-teal-800 hover:bg-teal-900 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Create Credit Note
@@ -165,7 +165,7 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
-            <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
+            <thead className="bg-slate-50/80 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
               <tr>
                 <th className="p-3.5">Credit Note No</th>
                 <th className="p-3.5">Linked Invoice</th>
@@ -187,8 +187,8 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
                 </tr>
               ) : (
                 creditNotes.map((cn) => (
-                  <tr key={cn.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-3.5 font-bold font-mono text-indigo-950">{cn.creditNoteNumber}</td>
+                  <tr key={cn.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="p-3.5 font-bold font-mono text-teal-950">{cn.creditNoteNumber}</td>
                     <td className="p-3.5 font-mono text-slate-700 font-semibold">{cn.invoiceNumber}</td>
                     <td className="p-3.5 font-medium text-slate-900">{cn.client?.name || 'Client'}</td>
                     <td className="p-3.5 text-slate-600">{cn.date}</td>
@@ -200,7 +200,7 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => setViewingCreditNote(cn)}
-                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"
+                          className="p-1.5 text-teal-700 hover:bg-teal-50 rounded cursor-pointer transition-colors"
                           title="View Credit Note PDF"
                         >
                           <Eye className="w-4 h-4" />
@@ -217,14 +217,14 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
                               toast.error('Failed to download PDF');
                             }
                           }}
-                          className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded"
+                          className="p-1.5 text-slate-600 hover:text-teal-700 hover:bg-teal-50 rounded cursor-pointer transition-colors"
                           title="Download Credit Note PDF"
                         >
                           <Download className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(cn)}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded"
+                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded cursor-pointer transition-colors"
                           title="Delete Credit Note (Restore Balance)"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -243,15 +243,15 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
       {viewingCreditNote && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
-            <div className="bg-indigo-950 px-6 py-3 text-white flex justify-between items-center shrink-0">
+            <div className="bg-slate-900 px-6 py-3 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
-                <FileText className="w-5 h-5 text-indigo-300" />
+                <FileText className="w-5 h-5 text-teal-400" />
                 <h3 className="font-bold text-sm">Credit Note {viewingCreditNote.creditNoteNumber}</h3>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => triggerPrint(`modal-cn-pdf-${viewingCreditNote.id}`)}
-                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   Print
@@ -261,14 +261,14 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
                     await downloadElementAsPdf(`modal-cn-pdf-${viewingCreditNote.id}`, `CreditNote-${viewingCreditNote.creditNoteNumber}.pdf`);
                     toast.success('Credit Note PDF downloaded');
                   }}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-teal-700 hover:bg-teal-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Download
                 </button>
                 <button
                   onClick={() => setViewingCreditNote(null)}
-                  className="p-1.5 text-indigo-300 hover:text-white rounded-lg"
+                  className="p-1.5 text-teal-300 hover:text-white rounded-lg cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -290,12 +290,12 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
       {isCreating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
-            <div className="bg-indigo-950 px-6 py-4 text-white flex justify-between items-center">
+            <div className="bg-slate-900 px-6 py-4 text-white flex justify-between items-center">
               <div>
                 <h2 className="text-base font-bold">Issue Credit Note</h2>
-                <p className="text-xs text-indigo-200">Linked to original GST invoice</p>
+                <p className="text-xs text-teal-200">Linked to original GST invoice</p>
               </div>
-              <button onClick={() => setIsCreating(false)} className="text-indigo-200 hover:text-white">
+              <button onClick={() => setIsCreating(false)} className="text-teal-200 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -308,7 +308,7 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
                   required
                   value={creditNoteNumber}
                   onChange={(e) => setCreditNoteNumber(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-xs"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                 />
               </div>
 
@@ -318,7 +318,7 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
                   required
                   value={selectedInvoiceId}
                   onChange={(e) => setSelectedInvoiceId(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden cursor-pointer"
                 >
                   <option value="">-- Choose Invoice --</option>
                   {invoices.map(inv => (
@@ -336,7 +336,7 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
                   required
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                 />
               </div>
 
@@ -352,7 +352,7 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
                       setAmount(val);
                       setGstAmount(Math.round(val * 0.18));
                     }}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-xs font-bold"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-xs font-bold focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                   />
                 </div>
                 <div>
@@ -362,14 +362,14 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
                     required
                     value={gstAmount}
                     onChange={(e) => setGstAmount(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-xs font-bold"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-xs font-bold focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
                   />
                 </div>
               </div>
 
               <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
-                <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-indigo-900 hover:bg-indigo-800 text-white font-bold rounded-lg shadow-sm">Issue Credit Note</button>
+                <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white font-bold rounded-lg shadow-2xs cursor-pointer">Issue Credit Note</button>
               </div>
             </form>
           </div>

@@ -81,12 +81,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const renderStatusBadge = (status: InvoiceStatus) => {
     const map: Record<InvoiceStatus, { label: string; bg: string; text: string }> = {
-      draft: { label: 'Draft', bg: 'bg-slate-100', text: 'text-slate-700' },
-      sent: { label: 'Sent', bg: 'bg-blue-100', text: 'text-blue-700' },
-      partially_paid: { label: 'Partially Paid', bg: 'bg-amber-100', text: 'text-amber-700' },
-      paid: { label: 'Paid', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-      overdue: { label: 'Overdue', bg: 'bg-rose-100', text: 'text-rose-700' },
-      cancelled: { label: 'Cancelled', bg: 'bg-slate-100', text: 'text-slate-500' }
+      draft: { label: 'Draft', bg: 'bg-slate-100 border border-slate-200', text: 'text-slate-700' },
+      sent: { label: 'Sent', bg: 'bg-teal-50 border border-teal-200', text: 'text-teal-800' },
+      partially_paid: { label: 'Partially Paid', bg: 'bg-amber-50 border border-amber-200', text: 'text-amber-800' },
+      paid: { label: 'Paid', bg: 'bg-emerald-50 border border-emerald-200', text: 'text-emerald-800' },
+      overdue: { label: 'Overdue', bg: 'bg-rose-50 border border-rose-200', text: 'text-rose-700' },
+      cancelled: { label: 'Cancelled', bg: 'bg-slate-100 border border-slate-200', text: 'text-slate-500' }
     };
     const s = map[status] || map.draft;
     return (
@@ -100,7 +100,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div className="space-y-6">
       {/* Top 4 Core Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Sales</div>
           <div className="text-2xl font-bold text-slate-900 font-mono">{formatINR(metrics.totalSales, true, 0)}</div>
           <div className="text-xs text-emerald-600 mt-2 flex items-center gap-1 font-medium">
@@ -108,7 +108,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Outstanding</div>
           <div className="text-2xl font-bold text-rose-600 font-mono">{formatINR(metrics.outstandingAmount, true, 0)}</div>
           <div className="text-xs text-slate-400 mt-2 font-medium">
@@ -116,15 +116,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">GST Collected</div>
           <div className="text-2xl font-bold text-slate-900 font-mono">{formatINR(metrics.totalGstCollected, true, 0)}</div>
-          <div className="text-xs text-indigo-600 mt-2 font-medium">
+          <div className="text-xs text-teal-700 mt-2 font-medium">
             IGST: 55% | CGST+SGST: 45%
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Invoices</div>
           <div className="text-2xl font-bold text-slate-900">{metrics.totalInvoices}</div>
           <div className="text-xs text-slate-400 mt-2 font-medium">
@@ -136,21 +136,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* Grid for Revenue Analytics & Status Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Revenue Analytics (Col span 2) */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
             <div>
-              <h2 className="font-bold text-slate-800 text-sm">Revenue Trend</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Gross invoiced volume & tax liabilities</p>
+              <h2 className="font-bold text-slate-900 text-sm">Revenue Trend</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Gross invoiced volume & tax liabilities</p>
             </div>
             <div className="flex gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200">
               {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(period => (
                 <button
                   key={period}
                   onClick={() => setChartInterval(period)}
-                  className={`text-[10px] px-2.5 py-1 rounded-md font-bold uppercase transition-all ${
+                  className={`text-[10px] px-2.5 py-1 rounded-md font-bold uppercase transition-all cursor-pointer ${
                     chartInterval === period
-                      ? 'bg-white text-indigo-600 shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
+                      ? 'bg-white text-teal-800 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {period}
@@ -164,11 +164,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.02} />
+                    <stop offset="5%" stopColor="#0f766e" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#0f766e" stopOpacity={0.02} />
                   </linearGradient>
                   <linearGradient id="colorGst" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
@@ -183,9 +183,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 />
                 <Tooltip
                   formatter={(value: any) => [formatINR(Number(value)), 'Amount']}
-                  contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b', color: '#fff', fontSize: '12px' }}
                 />
-                <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" name="Revenue" />
+                <Area type="monotone" dataKey="revenue" stroke="#0f766e" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" name="Revenue" />
                 <Area type="monotone" dataKey="gst" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorGst)" name="GST" />
               </AreaChart>
             </ResponsiveContainer>
@@ -193,21 +193,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {/* Invoice Status Breakdown (Col span 1) */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col p-5">
-          <h2 className="font-bold text-slate-800 text-sm mb-4">Invoice Status</h2>
+        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col p-5">
+          <h2 className="font-bold text-slate-900 text-sm mb-4">Invoice Status</h2>
           <div className="space-y-3.5 flex-1">
             <div className="flex items-center justify-between py-1">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-                <span className="text-xs font-medium text-slate-600">Paid Invoices</span>
+                <span className="text-xs font-medium text-slate-700">Paid Invoices</span>
               </div>
               <span className="text-xs font-bold text-slate-900 font-mono">{metrics.paidInvoices}</span>
             </div>
 
             <div className="flex items-center justify-between py-1">
               <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
-                <span className="text-xs font-medium text-slate-600">Sent Invoices</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-teal-600"></div>
+                <span className="text-xs font-medium text-slate-700">Sent Invoices</span>
               </div>
               <span className="text-xs font-bold text-slate-900 font-mono">{metrics.sentInvoices}</span>
             </div>
@@ -215,7 +215,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex items-center justify-between py-1">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-amber-400"></div>
-                <span className="text-xs font-medium text-slate-600">Partially Paid</span>
+                <span className="text-xs font-medium text-slate-700">Partially Paid</span>
               </div>
               <span className="text-xs font-bold text-slate-900 font-mono">{metrics.partiallyPaid}</span>
             </div>
@@ -223,7 +223,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex items-center justify-between py-1">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                <span className="text-xs font-medium text-slate-600">Overdue Invoices</span>
+                <span className="text-xs font-medium text-slate-700">Overdue Invoices</span>
               </div>
               <span className="text-xs font-bold text-rose-600 font-mono">{metrics.overdueInvoices}</span>
             </div>
@@ -231,16 +231,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex items-center justify-between py-1">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-slate-400"></div>
-                <span className="text-xs font-medium text-slate-600">Draft Invoices</span>
+                <span className="text-xs font-medium text-slate-700">Draft Invoices</span>
               </div>
               <span className="text-xs font-bold text-slate-900 font-mono">{metrics.draftInvoices}</span>
             </div>
           </div>
 
           <div className="mt-4 pt-4 border-t border-slate-100">
-            <div className="bg-indigo-50 p-3.5 rounded-lg flex items-center justify-between border border-indigo-100/60">
-              <span className="text-xs font-semibold text-indigo-700">Draft Value</span>
-              <span className="text-sm font-bold text-indigo-900 font-mono">
+            <div className="bg-teal-50/60 p-3.5 rounded-lg flex items-center justify-between border border-teal-100">
+              <span className="text-xs font-semibold text-teal-800">Draft Value</span>
+              <span className="text-sm font-bold text-teal-950 font-mono">
                 {formatINR(draftTotalValue > 0 ? draftTotalValue : 84200)}
               </span>
             </div>
@@ -249,9 +249,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* Client Deals & Sales Tracker Quick Strip */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-4 rounded-xl text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs border border-indigo-900/40">
+      <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 p-4 rounded-xl text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs border border-teal-900/40">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-indigo-500/20 text-indigo-300 rounded-lg">
+          <div className="p-2.5 bg-teal-500/20 text-teal-300 rounded-lg">
             <UserCheck className="w-5 h-5" />
           </div>
           <div>
@@ -268,7 +268,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
         <button
           onClick={() => onNavigate('onboarding')}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 shadow-xs cursor-pointer"
+          className="px-4 py-2 bg-teal-700 hover:bg-teal-600 text-white rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 shadow-xs cursor-pointer"
         >
           <span>Open Deals Tracker</span>
           <ArrowUpRight className="w-3.5 h-3.5" />
@@ -276,15 +276,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* Recent Invoices Table Card */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h2 className="font-bold text-slate-800 text-sm">Recent Invoices</h2>
-            <p className="text-xs text-slate-400">Latest billing transactions and payment statuses</p>
+            <h2 className="font-bold text-slate-900 text-sm">Recent Invoices</h2>
+            <p className="text-xs text-slate-500">Latest billing transactions and payment statuses</p>
           </div>
           <button
             onClick={() => onNavigate('invoices')}
-            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+            className="text-xs font-bold text-teal-700 hover:text-teal-900 transition-colors cursor-pointer"
           >
             View All &rarr;
           </button>
@@ -292,36 +292,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
-            <thead className="bg-slate-50 sticky top-0">
+            <thead className="bg-slate-50/80 sticky top-0">
               <tr>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">Invoice No</th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">Client</th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">Date</th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">Amount</th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">Status</th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">Actions</th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Invoice No</th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Client</th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Date</th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">Amount</th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Status</th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-100">
               {recentInvoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-3.5 font-mono font-bold text-indigo-600">{inv.invoiceNumber}</td>
-                  <td className="px-6 py-3.5 font-medium text-slate-700">{inv.client.name}</td>
-                  <td className="px-6 py-3.5 text-slate-500">{inv.invoiceDate}</td>
-                  <td className="px-6 py-3.5 font-bold text-slate-900 font-mono">{formatINR(inv.grandTotal)}</td>
+                <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="px-6 py-3.5 font-mono font-bold text-teal-950">{inv.invoiceNumber}</td>
+                  <td className="px-6 py-3.5 font-medium text-slate-800">{inv.client.name}</td>
+                  <td className="px-6 py-3.5 text-slate-600 font-mono">{inv.invoiceDate}</td>
+                  <td className="px-6 py-3.5 font-bold text-slate-900 font-mono text-right">{formatINR(inv.grandTotal)}</td>
                   <td className="px-6 py-3.5">{renderStatusBadge(inv.status)}</td>
                   <td className="px-6 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => onViewInvoice(inv)}
-                        className="text-slate-400 hover:text-indigo-600 p-1 transition-colors"
+                        className="text-slate-400 hover:text-teal-700 p-1 transition-colors cursor-pointer"
                         title="View Invoice"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => onRecordPayment(inv)}
-                        className="text-slate-400 hover:text-emerald-600 p-1 transition-colors"
+                        className="text-slate-400 hover:text-emerald-600 p-1 transition-colors cursor-pointer"
                         title="Record Payment"
                       >
                         <CreditCard className="w-4 h-4" />

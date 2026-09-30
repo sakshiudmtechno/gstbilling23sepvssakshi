@@ -76,16 +76,16 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
-        <div className="bg-gradient-to-r from-indigo-900 to-indigo-950 px-6 py-4 text-white flex justify-between items-center">
+        <div className="bg-gradient-to-r from-teal-900 to-slate-900 px-6 py-4 text-white flex justify-between items-center">
           <div>
             <h2 className="text-lg font-bold">Record Payment</h2>
-            <p className="text-xs text-indigo-200 mt-0.5">
+            <p className="text-xs text-teal-200 mt-0.5">
               Invoice #{invoice.invoiceNumber} • {invoice.client?.name || 'Client'}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-indigo-200 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            className="text-teal-200 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -122,14 +122,14 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 required
                 value={amount}
                 onChange={(e) => setAmount(Number(e.target.value))}
-                className="w-full pl-8 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-semibold focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-hidden text-base font-mono"
+                className="w-full pl-8 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-semibold focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden text-base font-mono"
               />
             </div>
             <div className="flex gap-2 mt-1.5">
               <button
                 type="button"
                 onClick={() => setAmount(currentBalance)}
-                className="text-[11px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 transition-colors"
+                className="text-[11px] font-medium text-teal-800 bg-teal-50 hover:bg-teal-100 px-2 py-0.5 rounded border border-teal-200 transition-colors cursor-pointer"
               >
                 Pay Full Balance ({formatINR(currentBalance)})
               </button>
@@ -137,7 +137,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setAmount(Math.round(currentBalance / 2))}
-                  className="text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded border border-slate-200 transition-colors"
+                  className="text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded border border-slate-200 transition-colors cursor-pointer"
                 >
                   Pay 50%
                 </button>
@@ -153,7 +153,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 required
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
               />
             </div>
 
@@ -164,7 +164,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 placeholder="e.g. UTR / UPI Ref / Cheque No"
                 value={transactionId}
                 onChange={(e) => setTransactionId(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
               />
             </div>
           </div>
@@ -180,13 +180,13 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                     key={m.id}
                     type="button"
                     onClick={() => setPaymentMethod(m.id)}
-                    className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-all ${
+                    className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-all cursor-pointer ${
                       isSelected
-                        ? 'border-indigo-600 bg-indigo-50/80 text-indigo-950 font-bold shadow-xs'
+                        ? 'border-teal-700 bg-teal-50 text-teal-950 font-bold shadow-2xs'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    <Icon className={`w-4 h-4 ${isSelected ? 'text-teal-700' : 'text-slate-400'}`} />
                     <span className="truncate">{m.label}</span>
                   </button>
                 );
@@ -201,7 +201,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               placeholder="e.g. Received via NEFT / Client confirmed transfer"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden resize-y"
             />
           </div>
 
@@ -209,14 +209,14 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 text-xs font-semibold text-white bg-indigo-900 hover:bg-indigo-800 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              className="px-5 py-2 text-xs font-semibold text-white bg-teal-800 hover:bg-teal-900 rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
             >
               <CheckCircle className="w-4 h-4" />
               {isSubmitting ? 'Recording...' : `Record Payment of ${formatINR(amount)}`}

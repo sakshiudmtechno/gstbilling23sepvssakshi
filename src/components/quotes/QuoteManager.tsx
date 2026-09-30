@@ -438,37 +438,37 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Estimates & Quotes</h1>
-          <p className="text-sm text-slate-500">Create client quotations with optional GST calculation and ad budget planning.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Estimates & Quotes</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Create client quotations with optional GST calculation and ad budget planning.</p>
         </div>
         <button
           onClick={() => {
             resetForm();
             setIsCreating(true);
           }}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 flex items-center gap-2 shadow-sm transition-all"
+          className="bg-teal-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-teal-800 flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
           Create Quick Estimate
         </button>
       </div>
 
       {/* List of Quotes */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xs border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
-                <th className="p-4 font-semibold">Quote No.</th>
-                <th className="p-4 font-semibold">Client</th>
-                <th className="p-4 font-semibold">Date</th>
-                <th className="p-4 font-semibold text-center">Tax Scheme</th>
-                <th className="p-4 font-semibold text-right">Amount</th>
-                <th className="p-4 font-semibold text-center">Status</th>
-                <th className="p-4 font-semibold text-right">Actions</th>
+              <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-600 font-bold">
+                <th className="p-3.5 font-bold">Quote No.</th>
+                <th className="p-3.5 font-bold">Client</th>
+                <th className="p-3.5 font-bold">Date</th>
+                <th className="p-3.5 font-bold text-center">Tax Scheme</th>
+                <th className="p-3.5 font-bold text-right">Amount</th>
+                <th className="p-3.5 font-bold text-center">Status</th>
+                <th className="p-3.5 font-bold text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 text-xs">
               {quotes.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-slate-500">
@@ -477,35 +477,35 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                 </tr>
               ) : (
                 quotes.map(quote => (
-                  <tr key={quote.id} className="hover:bg-slate-50">
-                    <td className="p-4 font-mono text-sm font-semibold text-indigo-700">{quote.quoteNumber}</td>
-                    <td className="p-4">
+                  <tr key={quote.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="p-3.5 font-mono text-xs font-bold text-teal-900">{quote.quoteNumber}</td>
+                    <td className="p-3.5">
                       <p className="font-semibold text-slate-900">{quote.client.name}</p>
-                      <p className="text-xs text-slate-500">{quote.client.email || 'No email'}</p>
+                      <p className="text-[11px] text-slate-500">{quote.client.email || 'No email'}</p>
                     </td>
-                    <td className="p-4 text-sm text-slate-600">{new Date(quote.quoteDate).toLocaleDateString()}</td>
-                    <td className="p-4 text-center">
+                    <td className="p-3.5 text-xs text-slate-600">{new Date(quote.quoteDate).toLocaleDateString()}</td>
+                    <td className="p-3.5 text-center">
                       {(quote.totalGst || 0) > 0 ? (
-                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-xs font-semibold">
+                        <span className="px-2 py-0.5 bg-teal-50 text-teal-900 border border-teal-200 rounded text-[11px] font-semibold">
                           GST Applied
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-medium">
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[11px] font-medium">
                           Without GST
                         </span>
                       )}
                     </td>
-                    <td className="p-4 text-right font-mono font-bold text-slate-900">₹{quote.grandTotal?.toLocaleString('en-IN') || "0"}</td>
-                    <td className="p-4 text-center">
-                      <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-semibold uppercase">
+                    <td className="p-3.5 text-right font-mono font-bold text-slate-900">₹{quote.grandTotal?.toLocaleString('en-IN') || "0"}</td>
+                    <td className="p-3.5 text-center">
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-[11px] font-semibold uppercase tracking-wider">
                         {quote.status}
                       </span>
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="p-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => setViewingQuote(quote)}
-                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"
+                          className="p-1.5 text-teal-700 hover:bg-teal-50 rounded transition-colors cursor-pointer"
                           title="View Estimate Preview"
                         >
                           <Eye className="w-4 h-4" />
@@ -514,12 +514,12 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                         <button
                           onClick={() => handleDownloadRowPdf(quote)}
                           disabled={downloadingQuoteId === quote.id}
-                          className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors disabled:opacity-50"
+                          className="p-1.5 text-slate-600 hover:text-teal-700 hover:bg-teal-50 rounded transition-colors disabled:opacity-50 cursor-pointer"
                           title="Download Estimate PDF"
                           aria-label={`Download PDF for estimate ${quote.quoteNumber}`}
                         >
                           {downloadingQuoteId === quote.id ? (
-                            <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />
+                            <Loader2 className="w-4 h-4 text-teal-700 animate-spin" />
                           ) : (
                             <Download className="w-4 h-4" />
                           )}
@@ -527,7 +527,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
 
                         <button
                           onClick={() => handleEditQuote(quote)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                          className="p-1.5 text-slate-600 hover:text-teal-700 hover:bg-teal-50 rounded transition-colors cursor-pointer"
                           title="Edit Estimate"
                         >
                           <Edit className="w-4 h-4" />
@@ -535,7 +535,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
 
                         <button
                           onClick={() => handleDeleteQuote(quote)}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded"
+                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
                           title="Delete Estimate"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -572,17 +572,17 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                 type="button" 
                 onClick={handleDownloadEstimatePdf} 
                 disabled={isDownloadingPdf}
-                className="px-4 py-2 font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm flex items-center gap-1.5 border border-indigo-200"
+                className="px-4 py-2 font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm flex items-center gap-1.5 border border-teal-200 cursor-pointer shadow-2xs"
                 title="Download Estimate as PDF"
               >
                 {isDownloadingPdf ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin text-teal-700" />
                     <span>Generating PDF...</span>
                   </>
                 ) : (
                   <>
-                    <Download className="w-4 h-4" />
+                    <Download className="w-4 h-4 text-teal-700" />
                     <span>Download PDF</span>
                   </>
                 )}
@@ -593,7 +593,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                   resetForm();
                   setIsCreating(false);
                 }} 
-                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-lg text-sm flex items-center gap-1.5"
+                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-lg text-sm flex items-center gap-1.5 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back</span>
@@ -602,7 +602,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                 type="button" 
                 onClick={() => handleSaveQuote()} 
                 disabled={isSaving}
-                className="px-5 py-2 font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm text-sm flex items-center gap-2"
+                className="px-5 py-2 font-bold text-white bg-teal-700 hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-2xs text-sm flex items-center gap-2 cursor-pointer"
               >
                 {isSaving ? 'Saving...' : (editingQuoteId ? 'Update Estimate' : 'Save Estimate')}
               </button>
@@ -617,8 +617,8 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                 {/* 1. Client & Estimate Information */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
                   <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                    <h3 className="text-xs font-bold text-teal-950 uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-teal-700"></span>
                       1. Client &amp; Estimate Details
                     </h3>
                     <span className="text-[11px] font-mono text-slate-500 font-semibold">{quoteNumber}</span>
@@ -633,7 +633,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                           required 
                           value={clientName} 
                           onChange={e => setClientName(e.target.value)} 
-                          className="w-full px-3 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg text-xs font-medium text-slate-900 transition-all outline-hidden" 
+                          className="w-full px-3 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-teal-700 focus:ring-1 focus:ring-teal-700 rounded-lg text-xs font-medium text-slate-900 transition-all outline-hidden" 
                           placeholder="e.g. Rahul Sharma" 
                         />
                       </div>
@@ -643,7 +643,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                           type="text" 
                           value={companyName} 
                           onChange={e => setCompanyName(e.target.value)} 
-                          className="w-full px-3 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg text-xs font-medium text-slate-900 transition-all outline-hidden" 
+                          className="w-full px-3 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-teal-700 focus:ring-1 focus:ring-teal-700 rounded-lg text-xs font-medium text-slate-900 transition-all outline-hidden" 
                           placeholder="e.g. Apex Health Centre" 
                         />
                       </div>
@@ -656,7 +656,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                           type="text" 
                           value={clientPhone} 
                           onChange={e => setClientPhone(e.target.value)} 
-                          className="w-full px-3 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg text-xs font-medium text-slate-900 transition-all outline-hidden" 
+                          className="w-full px-3 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-teal-700 focus:ring-1 focus:ring-teal-700 rounded-lg text-xs font-medium text-slate-900 transition-all outline-hidden" 
                           placeholder="+91 98765 43210" 
                         />
                       </div>
@@ -666,7 +666,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                           type="email" 
                           value={clientEmail} 
                           onChange={e => setClientEmail(e.target.value)} 
-                          className="w-full px-3 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg text-xs font-medium text-slate-900 transition-all outline-hidden" 
+                          className="w-full px-3 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-teal-700 focus:ring-1 focus:ring-teal-700 rounded-lg text-xs font-medium text-slate-900 transition-all outline-hidden" 
                           placeholder="client@example.com" 
                         />
                       </div>
@@ -679,7 +679,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                           type="text" 
                           value={clientAddress} 
                           onChange={e => setClientAddress(e.target.value)} 
-                          className="w-full px-3 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg text-xs font-medium text-slate-900 transition-all outline-hidden" 
+                          className="w-full px-3 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-teal-700 focus:ring-1 focus:ring-teal-700 rounded-lg text-xs font-medium text-slate-900 transition-all outline-hidden" 
                           placeholder="e.g. MG Road, Indore, MP" 
                         />
                       </div>
@@ -689,7 +689,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                           type="date" 
                           value={quoteDate} 
                           onChange={e => setQuoteDate(e.target.value)} 
-                          className="w-full px-2.5 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-indigo-500 rounded-lg text-xs font-medium text-slate-900 outline-hidden" 
+                          className="w-full px-2.5 py-2 bg-slate-50/50 border border-slate-300 focus:bg-white focus:border-teal-700 rounded-lg text-xs font-medium text-slate-900 outline-hidden" 
                         />
                       </div>
                     </div>
@@ -699,14 +699,14 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                 {/* 2. Quotation Service Items & Deliverables (Selection of Service) */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
                   <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                    <h3 className="text-xs font-bold text-teal-950 uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-teal-700"></span>
                       2. Service Items &amp; Deliverables
                     </h3>
                     <button 
                       type="button" 
                       onClick={handleAddItem} 
-                      className="text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all shadow-2xs"
+                      className="text-xs font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" /> Add Service
                     </button>
@@ -714,15 +714,15 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
 
                   <div className="p-4 space-y-4">
                     {items.map((item, index) => (
-                      <div key={item.id || index} className="p-3.5 bg-slate-50/60 rounded-xl border border-slate-200/90 relative hover:border-indigo-200 transition-all space-y-3">
+                      <div key={item.id || index} className="p-3.5 bg-slate-50/60 rounded-xl border border-slate-200/90 relative hover:border-teal-200 transition-all space-y-3">
                         {/* Auto-fill from predefined library */}
                         <div>
-                          <label className="block text-[11px] font-bold text-indigo-900 mb-1 flex items-center gap-1">
-                            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                          <label className="block text-[11px] font-bold text-teal-950 mb-1 flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-teal-700" />
                             Select Pre-Defined Service Package
                           </label>
                           <select 
-                            className="w-full px-3 py-1.5 border border-indigo-200 bg-white rounded-lg text-xs font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-hidden shadow-2xs"
+                            className="w-full px-3 py-1.5 border border-teal-200 bg-white rounded-lg text-xs font-medium text-slate-800 focus:ring-2 focus:ring-teal-700 outline-hidden shadow-2xs cursor-pointer"
                             onChange={(e) => {
                               const preset = PREDEFINED_SERVICES.find(s => s.id === e.target.value);
                               if (preset) {
@@ -769,7 +769,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                               required 
                               value={item.name || ''} 
                               onChange={e => handleItemChange(index, 'name', e.target.value)} 
-                              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:border-indigo-500 outline-hidden" 
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:border-teal-700 outline-hidden" 
                               placeholder="e.g. Custom Website Development" 
                             />
                           </div>
@@ -780,8 +780,8 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                               required 
                               value={item.rate ?? ''} 
                               onChange={e => handleItemChange(index, 'rate', Number(e.target.value))} 
-                              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:border-indigo-500 outline-hidden" 
-                              placeholder="0"
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:border-teal-700 outline-hidden" 
+                              placeholder="0" 
                             />
                           </div>
                           <div className="md:col-span-2">
@@ -791,7 +791,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                               min={1}
                               value={item.quantity || 1} 
                               onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))} 
-                              className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center text-slate-900 focus:border-indigo-500 outline-hidden" 
+                              className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center text-slate-900 focus:border-teal-700 outline-hidden" 
                             />
                           </div>
                           {items.length > 1 && (
@@ -799,7 +799,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                               <button 
                                 type="button" 
                                 onClick={() => handleRemoveItem(index)} 
-                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
+                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                                 title="Remove Item"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -814,7 +814,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                           <textarea 
                             value={item.description || ''} 
                             onChange={e => handleItemChange(index, 'description', e.target.value)} 
-                            className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs leading-relaxed focus:border-indigo-500 outline-hidden" 
+                            className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs leading-relaxed focus:border-teal-700 outline-hidden" 
                             rows={2} 
                             placeholder="Detail features, delivery timelines, scope of work..."
                           ></textarea>
@@ -825,20 +825,20 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                 </div>
 
                 {/* 3. Meta & Google Ads Budget & Lead Estimator Calculator (Positioned AFTER Service Selection) */}
-                <div className="bg-gradient-to-br from-violet-50/80 via-indigo-50/40 to-purple-50/60 rounded-xl border border-violet-200/90 shadow-2xs overflow-hidden">
-                  <div className="px-4 py-3 bg-white/70 border-b border-violet-100 flex items-center justify-between">
+                <div className="bg-gradient-to-br from-teal-50/70 via-slate-50 to-teal-50/50 rounded-xl border border-teal-200/90 shadow-2xs overflow-hidden">
+                  <div className="px-4 py-3 bg-white/70 border-b border-teal-100 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="p-1 bg-violet-600 text-white rounded-md">
+                      <div className="p-1 bg-teal-700 text-white rounded-md">
                         <Target className="w-3.5 h-3.5" />
                       </div>
-                      <h3 className="text-xs font-bold text-violet-950 uppercase tracking-wider">
+                      <h3 className="text-xs font-bold text-teal-950 uppercase tracking-wider">
                         3. Ads Campaign Budget &amp; Lead Estimator
                       </h3>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowAdCalculator(!showAdCalculator)}
-                      className="text-xs font-bold text-violet-700 hover:text-violet-900"
+                      className="text-xs font-bold text-teal-800 hover:text-teal-950 cursor-pointer"
                     >
                       {showAdCalculator ? 'Collapse' : 'Expand'}
                     </button>
@@ -853,9 +853,9 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                           <button
                             type="button"
                             onClick={() => setAdPlatform('meta')}
-                            className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                            className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                               adPlatform === 'meta'
-                                ? 'bg-indigo-600 text-white shadow-xs'
+                                ? 'bg-teal-700 text-white shadow-2xs'
                                 : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
                             }`}
                           >
@@ -864,9 +864,9 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                           <button
                             type="button"
                             onClick={() => setAdPlatform('google')}
-                            className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                            className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                               adPlatform === 'google'
-                                ? 'bg-indigo-600 text-white shadow-xs'
+                                ? 'bg-teal-700 text-white shadow-2xs'
                                 : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
                             }`}
                           >
@@ -878,10 +878,10 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                       {/* Daily Budget & Duration Grid */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Daily Budget */}
-                        <div className="bg-white/80 p-2.5 rounded-lg border border-violet-100">
+                        <div className="bg-white/80 p-2.5 rounded-lg border border-teal-100">
                           <div className="flex justify-between items-center mb-1">
                             <label className="text-[11px] font-bold text-slate-700">Daily Budget:</label>
-                            <span className="text-xs font-mono font-bold text-violet-700">₹{adDailyBudget}/day</span>
+                            <span className="text-xs font-mono font-bold text-teal-800">₹{adDailyBudget}/day</span>
                           </div>
                           <input
                             type="number"
@@ -889,7 +889,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                             step={50}
                             value={adDailyBudget}
                             onChange={e => setAdDailyBudget(Math.max(1, Number(e.target.value)))}
-                            className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-md text-xs font-mono font-bold mb-1.5"
+                            className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-md text-xs font-mono font-bold mb-1.5 focus:border-teal-700 outline-hidden"
                             placeholder="200"
                           />
                           <div className="flex flex-wrap gap-1">
@@ -898,10 +898,10 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                                 key={amt}
                                 type="button"
                                 onClick={() => setAdDailyBudget(amt)}
-                                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all ${
+                                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${
                                   adDailyBudget === amt
-                                    ? 'bg-violet-600 text-white font-bold'
-                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-violet-50'
+                                    ? 'bg-teal-700 text-white font-bold'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-teal-50'
                                 }`}
                               >
                                 ₹{amt}/d
@@ -911,17 +911,17 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                         </div>
 
                         {/* Duration Days */}
-                        <div className="bg-white/80 p-2.5 rounded-lg border border-violet-100">
+                        <div className="bg-white/80 p-2.5 rounded-lg border border-teal-100">
                           <div className="flex justify-between items-center mb-1">
                             <label className="text-[11px] font-bold text-slate-700">Duration (Days):</label>
-                            <span className="text-xs font-mono font-bold text-violet-700">{adDays} Days</span>
+                            <span className="text-xs font-mono font-bold text-teal-800">{adDays} Days</span>
                           </div>
                           <input
                             type="number"
                             min={1}
                             value={adDays}
                             onChange={e => setAdDays(Math.max(1, Number(e.target.value)))}
-                            className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-md text-xs font-mono font-bold mb-1.5"
+                            className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded-md text-xs font-mono font-bold mb-1.5 focus:border-teal-700 outline-hidden"
                             placeholder="15"
                           />
                           <div className="flex flex-wrap gap-1">
@@ -930,10 +930,10 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                                 key={d}
                                 type="button"
                                 onClick={() => setAdDays(d)}
-                                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all ${
+                                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${
                                   adDays === d
-                                    ? 'bg-violet-600 text-white font-bold'
-                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-violet-50'
+                                    ? 'bg-teal-700 text-white font-bold'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-teal-50'
                                 }`}
                               >
                                 {d}d
@@ -944,28 +944,28 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                       </div>
 
                       {/* Calculated Outcome & Add button */}
-                      <div className="bg-white p-3 rounded-xl border border-violet-200 space-y-2.5">
+                      <div className="bg-white p-3 rounded-xl border border-teal-200 space-y-2.5">
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-slate-600 font-medium">Calculated Ad Spend:</span>
-                          <span className="font-mono font-bold text-sm text-violet-950">
-                            ₹{adDailyBudget.toLocaleString('en-IN')} × {adDays}d = <span className="text-indigo-600 font-bold">₹{adStats.totalBudget.toLocaleString('en-IN')}</span>
+                          <span className="font-mono font-bold text-sm text-teal-950">
+                            ₹{adDailyBudget.toLocaleString('en-IN')} × {adDays}d = <span className="text-teal-700 font-bold">₹{adStats.totalBudget.toLocaleString('en-IN')}</span>
                           </span>
                         </div>
                         
-                        <div className="bg-violet-50/70 p-2 rounded-lg border border-violet-100 text-xs">
-                          <div className="flex items-center gap-1.5 text-violet-950 font-bold mb-0.5 text-[11px]">
-                            <TrendingUp className="w-3.5 h-3.5 text-violet-600" />
+                        <div className="bg-teal-50/70 p-2 rounded-lg border border-teal-100 text-xs">
+                          <div className="flex items-center gap-1.5 text-teal-950 font-bold mb-0.5 text-[11px]">
+                            <TrendingUp className="w-3.5 h-3.5 text-teal-700" />
                             <span>Estimated Leads Proportion:</span>
                           </div>
                           <p className="text-slate-700 text-[11px] leading-relaxed">
-                            ~<strong className="text-violet-900 font-bold">{adStats.dailyMinLeads}–{adStats.dailyMaxLeads} leads/day</strong> ({adStats.totalMinLeads}–{adStats.totalMaxLeads} leads across {adDays} days) based on niche &amp; competition.
+                            ~<strong className="text-teal-900 font-bold">{adStats.dailyMinLeads}–{adStats.dailyMaxLeads} leads/day</strong> ({adStats.totalMinLeads}–{adStats.totalMaxLeads} leads across {adDays} days) based on niche &amp; competition.
                           </p>
                         </div>
 
                         <button
                           type="button"
                           onClick={handleAddAdCampaignToQuote}
-                          className="w-full py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all"
+                          className="w-full py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                         >
                           <Plus className="w-4 h-4" />
                           Add This Campaign to Services (₹{adStats.totalBudget.toLocaleString('en-IN')})
@@ -978,8 +978,8 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                 {/* 4. GST Tax Calculation & Billing Breakdown */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
                   <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-2">
-                      <Percent className="w-3.5 h-3.5 text-indigo-600" />
+                    <h3 className="text-xs font-bold text-teal-950 uppercase tracking-wider flex items-center gap-2">
+                      <Percent className="w-3.5 h-3.5 text-teal-700" />
                       4. GST Tax Option &amp; Billing Breakdown
                     </h3>
                     <span className="text-[11px] font-semibold text-slate-500">
@@ -996,9 +996,9 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                             setApplyGst(false);
                             setGstRate(0);
                           }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                             !applyGst 
-                              ? 'bg-indigo-600 text-white shadow-xs' 
+                              ? 'bg-teal-700 text-white shadow-2xs' 
                               : 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200'
                           }`}
                         >
@@ -1010,9 +1010,9 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                             setApplyGst(true);
                             if (gstRate === 0) setGstRate(18);
                           }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                             applyGst 
-                              ? 'bg-indigo-600 text-white shadow-xs' 
+                              ? 'bg-teal-700 text-white shadow-2xs' 
                               : 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200'
                           }`}
                         >
@@ -1031,7 +1031,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                               if (val === 0) setApplyGst(false);
                               else setApplyGst(true);
                             }}
-                            className="px-2.5 py-1.5 border border-indigo-300 bg-white rounded-lg text-xs font-bold text-indigo-950 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                            className="px-2.5 py-1.5 border border-teal-300 bg-white rounded-lg text-xs font-bold text-teal-950 focus:ring-2 focus:ring-teal-700 outline-hidden cursor-pointer"
                           >
                             <option value={0}>0% (Exempt / Non-GST)</option>
                             <option value={5}>5% (Basic)</option>
@@ -1044,24 +1044,24 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                     </div>
 
                     {/* Financial summary card */}
-                    <div className="bg-indigo-50/60 rounded-xl p-3 border border-indigo-100 space-y-2 text-xs">
+                    <div className="bg-teal-50/60 rounded-xl p-3 border border-teal-100 space-y-2 text-xs">
                       <div className="flex justify-between text-slate-700">
                         <span>Services Subtotal (Taxable):</span>
                         <span className="font-mono font-bold text-slate-900">₹{subtotal.toLocaleString('en-IN')}</span>
                       </div>
 
                       {applyGst && gstRate > 0 && (
-                        <div className="flex justify-between text-indigo-900 font-semibold border-t border-indigo-100 pt-1.5">
+                        <div className="flex justify-between text-teal-950 font-semibold border-t border-teal-100 pt-1.5">
                           <span>
                             {isInter ? `IGST (${gstRate}%)` : `CGST (${gstRate/2}%) + SGST (${gstRate/2}%)`}:
                           </span>
-                          <span className="font-mono font-bold text-indigo-700">+ ₹{totalGst.toLocaleString('en-IN')}</span>
+                          <span className="font-mono font-bold text-teal-800">+ ₹{totalGst.toLocaleString('en-IN')}</span>
                         </div>
                       )}
 
-                      <div className="flex justify-between text-indigo-950 font-bold text-sm border-t-2 border-indigo-200 pt-2">
+                      <div className="flex justify-between text-teal-950 font-bold text-sm border-t-2 border-teal-200 pt-2">
                         <span>Grand Total Estimate:</span>
-                        <span className="font-mono text-base text-indigo-600">₹{grandTotal.toLocaleString('en-IN')}</span>
+                        <span className="font-mono text-base text-teal-700 font-bold">₹{grandTotal.toLocaleString('en-IN')}</span>
                       </div>
                     </div>
                   </div>
@@ -1073,17 +1073,17 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                     type="button" 
                     onClick={handleDownloadEstimatePdf} 
                     disabled={isDownloadingPdf}
-                    className="px-4 py-2 font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-xs font-bold flex items-center gap-1.5 border border-indigo-200 transition-all"
+                    className="px-4 py-2 font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-xs font-bold flex items-center gap-1.5 border border-teal-200 transition-all cursor-pointer"
                     title="Download Estimate as PDF"
                   >
                     {isDownloadingPdf ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin text-teal-700" />
                         <span>Generating PDF...</span>
                       </>
                     ) : (
                       <>
-                        <Download className="w-4 h-4" />
+                        <Download className="w-4 h-4 text-teal-700" />
                         <span>Download PDF</span>
                       </>
                     )}
@@ -1094,7 +1094,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                       resetForm();
                       setIsCreating(false);
                     }} 
-                    className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-lg text-xs flex items-center gap-1.5 transition-all"
+                    className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     <span>Back</span>
@@ -1103,7 +1103,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                     type="button" 
                     onClick={() => handleSaveQuote()} 
                     disabled={isSaving}
-                    className="px-6 py-2.5 font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm text-xs flex items-center gap-2 transition-all"
+                    className="px-6 py-2.5 font-bold text-white bg-teal-700 hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-2xs text-xs flex items-center gap-2 transition-all cursor-pointer"
                   >
                     {isSaving ? 'Saving...' : (editingQuoteId ? 'Update Estimate' : 'Save Estimate')}
                   </button>
@@ -1128,7 +1128,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
 
       {/* Viewing Quote Modal */}
       {viewingQuote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-6 overflow-hidden border border-slate-200">
             <div className="bg-slate-900 px-6 py-3 text-white flex justify-between items-center">
               <div>
@@ -1138,11 +1138,11 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => downloadElementAsPdf('modal-quote-pdf', `Estimate-${viewingQuote.quoteNumber}.pdf`)} 
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded text-xs font-bold flex items-center gap-1"
+                  className="px-3 py-1.5 bg-teal-700 hover:bg-teal-600 rounded text-xs font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <Download className="w-4 h-4" /> Download PDF
                 </button>
-                <button onClick={() => setViewingQuote(null)} className="p-1 rounded hover:bg-white/10"><X className="w-5 h-5" /></button>
+                <button onClick={() => setViewingQuote(null)} className="p-1 rounded hover:bg-white/10 cursor-pointer"><X className="w-5 h-5" /></button>
               </div>
             </div>
             <div className="p-6 bg-slate-100 max-h-[75vh] overflow-y-auto flex justify-center">

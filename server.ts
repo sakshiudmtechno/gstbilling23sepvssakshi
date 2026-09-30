@@ -1,6 +1,5 @@
 import express from 'express';
 import type { Request, Response } from 'express';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import {
@@ -2689,6 +2688,7 @@ async function startServer() {
   // In production / container deployment, serve static assets directly from dist.
   if (isDev || !hasDist) {
     console.log('Starting Vite in development middleware mode...');
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -2734,4 +2734,10 @@ async function startServer() {
   }, 500);
 }
 
-startServer();
+export default app;
+export { app };
+
+// Only start the standalone HTTP server when not running in a Vercel serverless environment
+if (!process.env.VERCEL) {
+  startServer();
+}

@@ -196,7 +196,7 @@ export function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc] font-sans text-slate-900 antialiased selection:bg-indigo-600 selection:text-white">
+    <div className="flex min-h-screen bg-[#f8fafc] font-sans text-slate-900 antialiased selection:bg-teal-700 selection:text-white">
       {/* Persistent Left Sidebar with Mobile Drawer */}
       <Sidebar
         activeTab={activeTab}
@@ -228,7 +228,7 @@ export function App() {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {isLoading ? (
             <div className="h-64 flex flex-col items-center justify-center space-y-3">
-              <div className="w-8 h-8 border-3 border-indigo-900 border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-3 border-teal-700 border-t-transparent rounded-full animate-spin" />
               <p className="text-xs text-slate-500 font-medium">Loading GST Invoicing Console...</p>
             </div>
           ) : (
@@ -391,7 +391,7 @@ export function App() {
                     }
                   }}
                   disabled={isDownloadingPdf}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 transition-colors disabled:opacity-50"
                 >
                   {isDownloadingPdf ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

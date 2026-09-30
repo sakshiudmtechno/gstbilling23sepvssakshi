@@ -147,25 +147,25 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-150">
       <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full my-8 overflow-hidden border border-slate-200">
-        <div className="bg-gradient-to-r from-indigo-900 to-indigo-950 px-6 py-4 text-white flex justify-between items-center">
+        <div className="bg-gradient-to-r from-teal-900 to-slate-900 px-6 py-4 text-white flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-indigo-300" />
+            <Building2 className="w-5 h-5 text-teal-300" />
             <div>
               <h2 className="text-lg font-bold">{editingClient ? 'Edit Client' : 'Add New Client / Customer'}</h2>
-              <p className="text-xs text-indigo-200">Customer profile &amp; billing details</p>
+              <p className="text-xs text-teal-200">Customer profile &amp; billing details</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-indigo-200 hover:text-white p-1 rounded-lg hover:bg-white/10">
+          <button onClick={onClose} className="text-teal-200 hover:text-white p-1 rounded-lg hover:bg-white/10 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
           {/* Quick GSTIN Auto-fill Bar */}
-          <div className="bg-indigo-50/70 p-3 rounded-xl border border-indigo-100 space-y-1">
+          <div className="bg-teal-50/70 p-3 rounded-xl border border-teal-100 space-y-1">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-bold text-indigo-950">GSTIN (15 Digits - Optional)</label>
-              <span className="text-[11px] text-indigo-600 font-medium">Auto-fills PAN &amp; State</span>
+              <label className="text-xs font-bold text-teal-950">GSTIN (15 Digits - Optional)</label>
+              <span className="text-[11px] text-teal-700 font-medium">Auto-fills PAN &amp; State</span>
             </div>
             <input
               type="text"
@@ -173,7 +173,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               placeholder="e.g. 23AHWPH3168H2Z2 (Leave blank if unregistered)"
               value={gstin}
               onChange={(e) => handleGstinChange(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-lg text-slate-900 text-xs font-mono font-bold uppercase tracking-wider focus:ring-2 focus:ring-indigo-600 outline-hidden"
+              className="w-full px-3 py-2 bg-white border border-teal-200 rounded-lg text-slate-900 text-xs font-mono font-bold uppercase tracking-wider focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
             />
             {gstin && (
               <p className={`text-[11px] flex items-center gap-1 ${gstinStatus.isValid ? 'text-emerald-700' : 'text-amber-700'}`}>
@@ -194,7 +194,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 placeholder="e.g. RADICAL FABROTECH"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 text-xs font-semibold focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 text-xs font-semibold focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
               />
             </div>
 
@@ -203,7 +203,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               <select
                 value={customerType}
                 onChange={(e) => setCustomerType(e.target.value as any)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden cursor-pointer"
               >
                 <option value="B2B">B2B (Registered Business)</option>
                 <option value="B2C">B2C (Consumer / Unregistered)</option>
@@ -219,7 +219,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 placeholder="e.g. Rajesh Sharma"
                 value={contactPerson}
                 onChange={(e) => setContactPerson(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
               />
             </div>
 
@@ -230,7 +230,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 placeholder="+91 98220 12345"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
               />
             </div>
 
@@ -241,7 +241,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 placeholder="billing@client.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
               />
             </div>
 
@@ -253,7 +253,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 placeholder="e.g. AHWPH3168H"
                 value={pan}
                 onChange={(e) => setPan(e.target.value.toUpperCase())}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs font-mono uppercase focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs font-mono uppercase focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
               />
             </div>
 
@@ -264,7 +264,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               <select
                 value={state}
                 onChange={(e) => handleStateChange(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden cursor-pointer"
               >
                 {INDIAN_STATES.map((s) => (
                   <option key={s.code} value={s.name}>
@@ -281,7 +281,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 placeholder="Street address, building, industrial area..."
                 value={billingAddress}
                 onChange={(e) => setBillingAddress(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden resize-y"
               />
             </div>
 
@@ -292,7 +292,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 placeholder="e.g. Indore / Pune"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
               />
             </div>
 
@@ -304,7 +304,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 placeholder="e.g. 452010"
                 value={pinCode}
                 onChange={(e) => setPinCode(e.target.value.trim())}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
               />
             </div>
 
@@ -315,7 +315,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 placeholder="Client specific notes, payment terms, etc."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-indigo-600 outline-hidden"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
               />
             </div>
           </div>
@@ -324,14 +324,14 @@ export const ClientModal: React.FC<ClientModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg"
+              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="px-5 py-2 text-xs font-semibold text-white bg-indigo-900 hover:bg-indigo-800 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+              className="px-5 py-2 text-xs font-semibold text-white bg-teal-800 hover:bg-teal-900 rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
             >
               <Check className="w-4 h-4" />
               {isSaving ? 'Saving...' : editingClient ? 'Update Client' : 'Add Client'}
