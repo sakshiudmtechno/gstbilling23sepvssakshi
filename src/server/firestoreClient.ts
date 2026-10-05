@@ -56,6 +56,11 @@ async function initAdminIfNeeded() {
         }, `admin_app_${Date.now()}`);
 
         adminDb = getFirestore(app, config.firestoreDatabaseId || '(default)');
+        try {
+          adminDb.settings({ ignoreUndefinedProperties: true });
+        } catch (e) {
+          // Non-blocking
+        }
         console.log('Firebase Admin SDK initialized successfully with Service Account Key');
         return adminDb;
       }
@@ -66,7 +71,47 @@ async function initAdminIfNeeded() {
   return null;
 }
 
-// Convert JS Value to Firestore Value
+// Convert JS Value to Firestore Value and strip undefined
+export function sanitizeForFirestore(val: any): any {
+  if (val === undefined) return null;
+  if (val === null) return null;
+  if (Array.isArray(val)) {
+    return val.map(sanitizeForFirestore);
+  }
+  if (typeof val === 'object' && !(val instanceof Date)) {
+    const clean: Record<string, any> = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (v !== undefined) {
+        clean[k] = sanitizeForFirestore(v);
+      }
+    }
+    return clean;
+  }
+  return val;
+}
+
+// Strip undefined keys from objects and arrays completely so Firestore never errors on undefined
+export function stripUndefined(val: any): any {
+  if (val === undefined) return undefined;
+  if (val === null) return null;
+  if (Array.isArray(val)) {
+    return val.map(item => stripUndefined(item)).filter(item => item !== undefined);
+  }
+  if (typeof val === 'object' && !(val instanceof Date)) {
+    const clean: Record<string, any> = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (v !== undefined) {
+        const cleanedValue = stripUndefined(v);
+        if (cleanedValue !== undefined) {
+          clean[k] = cleanedValue;
+        }
+      }
+    }
+    return clean;
+  }
+  return val;
+}
+
 export function toFirestoreValue(val: any): any {
   if (val === null || val === undefined) return { nullValue: null };
   if (typeof val === 'boolean') return { booleanValue: val };
@@ -186,18 +231,18 @@ export async function setDoc<T extends Record<string, any>>(
   data: T,
   merge: boolean = false
 ): Promise<void> {
+  const cleanData: any = stripUndefined(data) || {};
+  if (!cleanData.id) cleanData.id = id;
+
   const admin = await initAdminIfNeeded();
   if (admin) {
     try {
-      await admin.collection(collection).doc(id).set(data, { merge });
+      await admin.collection(collection).doc(id).set(cleanData, { merge });
       return;
     } catch (err: any) {
       console.warn(`Admin setDoc error on ${collection}/${id}: ${err.message}. Falling back to REST.`);
     }
   }
-
-  const cleanData: any = { ...data };
-  if (!cleanData.id) cleanData.id = id;
 
   const fields: Record<string, any> = {};
   for (const [k, v] of Object.entries(cleanData)) {
@@ -494,7 +539,7 @@ export async function batchSet(collection: string, items: Array<{ id: string; da
       for (const chunk of chunks) {
         const batch = admin.batch();
         for (const item of chunk) {
-          batch.set(admin.collection(collection).doc(item.id), item.data, { merge: true });
+          batch.set(admin.collection(collection).doc(item.id), stripUndefined(item.data) || {}, { merge: true });
         }
         await batch.commit();
       }

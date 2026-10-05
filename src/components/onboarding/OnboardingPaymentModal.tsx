@@ -18,8 +18,12 @@ export const OnboardingPaymentModal: React.FC<OnboardingPaymentModalProps> = ({
 }) => {
   const currentDue = onboarding.remainingBalance ?? Math.max(0, (onboarding.totalPackageValue || 0) - (onboarding.advancePaid || 0));
   const [amount, setAmount] = useState<number>(currentDue || 0);
+  const [paymentType, setPaymentType] = useState<string>(
+    (onboarding.advancePaid || 0) === 0 ? (currentDue > 0 && amount >= currentDue ? 'Full Payment' : 'Advance') : (amount >= currentDue ? 'Balance Payment' : 'Partial Payment')
+  );
   const [paymentMethod, setPaymentMethod] = useState<string>('UPI');
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [transactionId, setTransactionId] = useState<string>('');
   const [notes, setNotes] = useState<string>('Payment received');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
@@ -42,7 +46,8 @@ export const OnboardingPaymentModal: React.FC<OnboardingPaymentModalProps> = ({
       const paymentData = {
         amount: Number(amount),
         paymentMethod,
-        type: 'balance',
+        type: paymentType,
+        transactionId,
         notes,
         date: paymentDate
       };
@@ -172,17 +177,17 @@ export const OnboardingPaymentModal: React.FC<OnboardingPaymentModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
+              <label className="block font-semibold text-slate-700 mb-1">Payment Type</label>
               <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+                value={paymentType}
+                onChange={(e) => setPaymentType(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold"
               >
-                <option value="UPI">UPI / GPay / PhonePe</option>
-                <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
-                <option value="Cash">Cash</option>
-                <option value="Cheque">Cheque</option>
-                <option value="Other">Other</option>
+                <option value="Advance">🔹 Advance</option>
+                <option value="Partial Payment">🔸 Partial Payment</option>
+                <option value="Balance Payment">🟢 Balance Payment</option>
+                <option value="Full Payment">✅ Full Payment</option>
+                <option value="Renewal Payment">🔄 Renewal Payment</option>
               </select>
             </div>
 
@@ -198,13 +203,41 @@ export const OnboardingPaymentModal: React.FC<OnboardingPaymentModalProps> = ({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+              >
+                <option value="UPI">UPI / GPay / PhonePe</option>
+                <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
+                <option value="Cash">Cash</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Transaction / Ref ID</label>
+              <input
+                type="text"
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                placeholder="e.g. UTR / UPI Ref"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Remarks / Reference</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. UPI Ref / Cash / Installment 2"
+              placeholder="e.g. Confirmed via WhatsApp / Bank alert"
               className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
             />
           </div>

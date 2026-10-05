@@ -9,26 +9,72 @@ const A4_WIDTH_MM = 210;
 const A4_HEIGHT_MM = 297;
 
 /**
- * Generate standard naming series for exported PDF:
- * Format: "UDM x {Client Name} - Rs.{Amount} - {Invoice Series} - {Invoice Date}.pdf"
+ * Generate standard naming for exported PDF:
+ * PDF name matches client name (e.g. "{Client Name}.pdf")
  */
-export function getInvoicePdfFilename(invoice: {
-  client?: { name?: string };
-  grandTotal?: number;
-  invoiceNumber?: string;
-  invoiceDate?: string;
-}): string {
-  const rawClientName = invoice.client?.name || 'Client';
+export function getInvoicePdfFilename(
+  invoice: {
+    client?: { name?: string; businessName?: string; contactPerson?: string };
+    customerName?: string;
+    clientName?: string;
+    clientId?: string;
+    grandTotal?: number;
+    invoiceNumber?: string;
+    invoiceDate?: string;
+  },
+  clientsList?: Array<{ id: string; name?: string; contactPerson?: string }>
+): string {
+  let rawClientName =
+    invoice.client?.name ||
+    invoice.client?.businessName ||
+    invoice.client?.contactPerson ||
+    (invoice as any).clientName ||
+    (invoice as any).customerName ||
+    '';
+
+  // If generic "Client Name" or empty, try finding by clientId in clientsList
+  if ((!rawClientName || rawClientName.toLowerCase() === 'client name') && invoice.clientId && clientsList?.length) {
+    const found = clientsList.find(c => c.id === invoice.clientId);
+    if (found) {
+      rawClientName = found.name || found.contactPerson || '';
+    }
+  }
+
   const cleanClientName = rawClientName
     .replace(/[\\/:*?"<>|]/g, '')
     .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 40);
-  const amount = Math.round(invoice.grandTotal || 0);
-  const series = (invoice.invoiceNumber || 'Invoice').replace(/[\\/:*?"<>|]/g, '').trim();
-  const date = invoice.invoiceDate || new Date().toISOString().split('T')[0];
+    .trim();
 
-  return `Invoice - UDM x ${cleanClientName} - Rs.${amount} - ${series} - ${date}.pdf`;
+  if (cleanClientName && cleanClientName.toLowerCase() !== 'client name' && cleanClientName.toLowerCase() !== 'new client') {
+    return `${cleanClientName}.pdf`;
+  }
+
+  const series = (invoice.invoiceNumber || 'Invoice').replace(/[\\/:*?"<>|]/g, '').trim();
+  return `${series || 'Invoice'}.pdf`;
+}
+
+/**
+ * Helper to get clean PDF filename matching client name for any document
+ */
+export function getClientPdfFilename(
+  clientOrName?: string | { name?: string; businessName?: string; contactPerson?: string; companyName?: string },
+  fallback = 'Document'
+): string {
+  let raw = '';
+  if (typeof clientOrName === 'string') {
+    raw = clientOrName;
+  } else if (clientOrName) {
+    raw = clientOrName.name || clientOrName.businessName || clientOrName.companyName || clientOrName.contactPerson || '';
+  }
+  const clean = (raw || '')
+    .replace(/[\\/:*?"<>|]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (clean && clean.toLowerCase() !== 'client name' && clean.toLowerCase() !== 'new client') {
+    return `${clean}.pdf`;
+  }
+  return `${fallback.replace(/\.pdf$/i, '')}.pdf`;
 }
 
 /**

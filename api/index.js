@@ -1675,7 +1675,7 @@ app.get("/api/business-profile", async (req, res) => {
         pinCode: "452001",
         country: "India",
         email: "billing@udmtechno.com",
-        phone: "9826000000",
+        phone: "",
         authorizedSignatoryName: "Authorized Signatory"
       };
       await setDoc("settings", "businessProfile", profile, true);
@@ -2451,6 +2451,16 @@ app.post("/api/quotes/:id/convert-to-invoice", async (req, res) => {
     if (!quote) {
       return res.status(404).json({ success: false, message: "Quote not found" });
     }
+    if (quote.status === "converted" && quote.convertedToInvoiceId) {
+      const existingInv = await getDoc("invoices", quote.convertedToInvoiceId);
+      if (existingInv) {
+        return res.json({ success: true, invoice: existingInv, alreadyConverted: true });
+      }
+    }
+    let client = quote.client;
+    if (!client && quote.clientId) {
+      client = await getDoc("clients", quote.clientId);
+    }
     const nextNumber = await generateNextInvoiceNumber();
     const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     const dueDate = new Date(Date.now() + 15 * 864e5).toISOString().split("T")[0];
@@ -2465,16 +2475,16 @@ app.post("/api/quotes/:id/convert-to-invoice", async (req, res) => {
       billingStartDate: today,
       billingEndDate: dueDate,
       billingPeriod: `${today} to ${dueDate}`,
-      placeOfSupply: quote.placeOfSupply,
-      placeOfSupplyCode: quote.placeOfSupplyCode,
+      placeOfSupply: quote.placeOfSupply || client?.state || "Madhya Pradesh",
+      placeOfSupplyCode: quote.placeOfSupplyCode || client?.stateCode || "23",
       currency: quote.currency || "INR",
       financialYear: "FY 2026-27",
-      isInterState: quote.isInterState,
+      isInterState: quote.isInterState ?? (client?.stateCode || "23") !== (businessProfile.stateCode || "23"),
       status: "draft",
       template: quote.template || "classic",
       seller: businessProfile,
       clientId: quote.clientId,
-      client: quote.client,
+      client,
       items: quote.items || [],
       discountType: quote.discountType || "percentage",
       discountValue: quote.discountValue || 0,
@@ -3607,9 +3617,7 @@ var server_default = app;
 if (!process.env.VERCEL) {
   startServer();
 }
-
-// api/index.ts
-var index_default = server_default;
 export {
-  index_default as default
+  app,
+  server_default as default
 };

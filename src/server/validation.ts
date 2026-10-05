@@ -137,6 +137,7 @@ export const CreditNoteSchema = z.object({
 
 export const RecurringInvoiceSchema = z.object({
   title: z.string().optional().default('Recurring AMC & Retainer'),
+  serviceName: z.string().optional(),
   recurringNumber: z.string().optional(),
   clientId: z.string().min(1, 'Client ID is required'),
   clientName: z.string().optional(),
@@ -147,6 +148,15 @@ export const RecurringInvoiceSchema = z.object({
     z.string().default(new Date().toISOString().split('T')[0])
   ),
   endDate: z.string().optional(),
+  currentExpiryDate: z.string().optional(),
+  nextRenewalDate: z.string().optional(),
+  monthlyRenewalAmount: z.number().optional(),
+  lastPaymentDate: z.string().optional(),
+  lastPaymentAmount: z.number().optional(),
+  renewalStatus: z.enum(['active', 'due_soon', 'expired', 'renewed', 'payment_pending']).optional(),
+  paymentStatus: z.enum(['paid', 'pending', 'partially_paid']).optional(),
+  renewalHistory: z.array(z.any()).optional(),
+  renewalPayments: z.array(z.any()).optional(),
   nextInvoiceDate: z.string().optional(),
   nextDueDate: z.string().optional(),
   status: z.enum(['active', 'paused', 'cancelled', 'completed']).default('active'),
@@ -243,7 +253,14 @@ export const OnboardingSchema = z.object({
 export const PaymentRecordSchema = z.object({
   amount: z.number().min(0.01, 'Payment amount must be greater than zero'),
   paymentDate: z.string().optional(),
+  paymentType: z.enum(['Advance', 'Partial Payment', 'Balance Payment', 'Full Payment', 'Renewal Payment']).optional(),
   paymentMethod: z.string().optional().default('UPI'),
   transactionId: z.string().optional().default(''),
-  notes: z.string().optional().default('')
+  notes: z.string().optional().default(''),
+  clientId: z.string().optional(),
+  clientName: z.string().optional(),
+  invoiceNumber: z.string().optional(),
+  dealId: z.string().optional(),
+  dealTitle: z.string().optional(),
+  serviceName: z.string().optional()
 }).passthrough();

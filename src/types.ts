@@ -92,14 +92,24 @@ export interface AdditionalCharge {
   gstAmount?: number;
 }
 
+export type PaymentType = 'Advance' | 'Partial Payment' | 'Balance Payment' | 'Full Payment' | 'Renewal Payment';
+
 export interface InvoicePayment {
   id: string;
   invoiceId: string;
+  invoiceNumber?: string;
+  clientId?: string;
+  clientName?: string;
+  dealId?: string;
+  dealTitle?: string;
+  serviceName?: string;
   amount: number;
   paymentDate: string;
-  paymentMethod: 'Cash' | 'Bank Transfer' | 'UPI' | 'Razorpay' | 'Cheque' | 'Other';
+  paymentType?: PaymentType;
+  paymentMethod: 'Cash' | 'Bank Transfer' | 'UPI' | 'Razorpay' | 'Cheque' | 'Other' | string;
   transactionId?: string;
   notes?: string;
+  remainingBalance?: number;
   createdAt: string;
 }
 
@@ -131,6 +141,10 @@ export interface Invoice {
   // Billed to snapshot
   clientId: string;
   client: Client;
+  clientName?: string;
+  servicePackage?: string;
+  dealId?: string;
+  dealTitle?: string;
 
   // Shipping details
   hasShippingAddress?: boolean;
@@ -264,9 +278,30 @@ export interface CreditNote {
   createdAt?: string;
 }
 
+export type RenewalStatus = 'active' | 'due_soon' | 'expired' | 'renewed' | 'payment_pending';
+export type RecurringPaymentStatus = 'paid' | 'pending' | 'partially_paid';
+
+export interface RenewalRecord {
+  id: string;
+  recurringInvoiceId: string;
+  periodName: string; // e.g. "October 2026"
+  periodStartDate: string; // "2026-10-01"
+  periodEndDate: string; // "2026-10-31"
+  renewalAmount: number; // e.g. 3000
+  paidAmount: number; // e.g. 3000
+  paymentStatus: RecurringPaymentStatus;
+  paymentDate?: string;
+  paymentMethod?: string;
+  referenceId?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface RecurringInvoice {
   id: string;
   title?: string;
+  serviceName?: string;
   recurringNumber?: string;
   clientId: string;
   client?: Client;
@@ -274,6 +309,15 @@ export interface RecurringInvoice {
   frequency: 'weekly' | 'monthly' | 'quarterly' | 'half_yearly' | 'yearly';
   startDate: string;
   endDate?: string;
+  currentExpiryDate?: string;
+  nextRenewalDate?: string;
+  monthlyRenewalAmount?: number;
+  lastPaymentDate?: string;
+  lastPaymentAmount?: number;
+  renewalStatus?: RenewalStatus;
+  paymentStatus?: RecurringPaymentStatus;
+  renewalHistory?: RenewalRecord[];
+  renewalPayments?: any[];
   nextInvoiceDate?: string;
   nextDueDate?: string;
   nextRunDate?: string;

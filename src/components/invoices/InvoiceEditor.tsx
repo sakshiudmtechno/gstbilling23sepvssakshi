@@ -6,7 +6,8 @@ import {
   AdditionalCharge,
   Client,
   BusinessProfile,
-  InvoiceTemplateType
+  InvoiceTemplateType,
+  Quote
 } from '../../types';
 import {
   INDIAN_STATES,
@@ -17,7 +18,7 @@ import {
   getFinancialYear,
   calculateBillingPeriod
 } from '../../utils/gstUtils';
-import { calculateInvoiceTotals, numberToIndianWords } from '../../utils/taxCalculator';
+import { calculateInvoiceTotals, numberToIndianWords, round2 } from '../../utils/taxCalculator';
 import { api } from '../../utils/api';
 import { InvoicePDFTemplate } from './InvoicePDFTemplate';
 import { downloadElementAsPdf, triggerPrint, printInvoiceElement, getInvoicePdfFilename } from '../../utils/pdfGenerator';
@@ -59,20 +60,74 @@ import { PREDEFINED_SERVICES, ServicePackage, calculateAdBudgetStats } from '../
 
 interface InvoiceEditorProps {
   initialInvoice?: Invoice | null;
+  clients?: Client[];
+  invoices?: Invoice[];
+  quotes?: Quote[];
   onBack: () => void;
   onSaveSuccess: (savedInvoice: Invoice) => void;
   onRecordPayment?: (invoice: Invoice) => void;
   onClientCreated?: (client: Client) => void;
 }
 
+const mergeUniqueClients = (
+  listA: Client[] = [],
+  listB: Client[] = [],
+  extra?: Client | null,
+  invoicesList?: Invoice[],
+  quotesList?: Quote[]
+): Client[] => {
+  const map = new Map<string, Client>();
+
+  const allPotential: (Client | undefined | null)[] = [
+    ...listA,
+    ...listB,
+    extra,
+    ...(invoicesList || []).map(i => i.client),
+    ...(quotesList || []).map(q => q.client)
+  ];
+
+  for (const c of allPotential) {
+    if (!c || !c.name || typeof c.name !== 'string' || !c.name.trim()) continue;
+    const normName = c.name.toLowerCase().trim();
+    const existing = map.get(normName);
+    if (!existing) {
+      map.set(normName, {
+        ...c,
+        id: c.id || `client_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+      });
+    } else {
+      map.set(normName, {
+        ...existing,
+        id: existing.id || c.id,
+        phone: existing.phone || c.phone || '',
+        email: existing.email || c.email || '',
+        billingAddress: (existing.billingAddress && existing.billingAddress !== 'Not Provided') ? existing.billingAddress : (c.billingAddress || existing.billingAddress),
+        city: existing.city || c.city || '',
+        state: existing.state || c.state || 'Madhya Pradesh',
+        stateCode: existing.stateCode || c.stateCode || '23',
+        gstin: existing.gstin || c.gstin || '',
+        pan: existing.pan || c.pan || '',
+        contactPerson: existing.contactPerson || c.contactPerson || existing.name
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+};
+
 export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
   initialInvoice,
+  clients: propClients,
+  invoices: propInvoices,
+  quotes: propQuotes,
   onBack,
   onSaveSuccess,
   onRecordPayment,
   onClientCreated
 }) => {
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<Client[]>(() =>
+    mergeUniqueClients(propClients || [], [], initialInvoice?.client, propInvoices, propQuotes)
+  );
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -168,8 +223,9 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
           !initialInvoice ? api.getNextInvoiceNumber() : Promise.resolve(null)
         ]);
 
+        const mergedAll = mergeUniqueClients(clientList, propClients, initialInvoice?.client, propInvoices, propQuotes);
         setBusinessProfile(profile);
-        setClients(clientList);
+        setClients(mergedAll);
 
         if (initialInvoice) {
           // Editing existing invoice
@@ -181,7 +237,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
           setPlaceOfSupply(initialInvoice.placeOfSupply);
           setPlaceOfSupplyCode(initialInvoice.placeOfSupplyCode);
           setTemplate(initialInvoice.template || 'classic');
-          setSelectedClientId(initialInvoice.clientId);
+          setSelectedClientId(initialInvoice.clientId || initialInvoice.client?.id || '');
           setSelectedClient(initialInvoice.client);
           setItems(initialInvoice.items);
           setGlobalDiscountType(initialInvoice.discountType || 'percentage');
@@ -204,8 +260,8 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
           if (nextNum) {
             setInvoiceNumber(nextNum.invoiceNumber);
           }
-          if (clientList.length > 0) {
-            const defaultCl = clientList.find(c => c.name.includes('RADICAL')) || clientList[0];
+          if (mergedAll.length > 0) {
+            const defaultCl = mergedAll.find(c => c.name.includes('RADICAL')) || mergedAll[0];
             setSelectedClientId(defaultCl.id);
             setSelectedClient(defaultCl);
             setPlaceOfSupply(defaultCl.state);
@@ -219,14 +275,19 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
     loadData();
   }, [initialInvoice]);
 
+  // Keep clients in sync with prop updates
+  useEffect(() => {
+    setClients(prev => mergeUniqueClients(prev, propClients || [], initialInvoice?.client, propInvoices, propQuotes));
+  }, [propClients, initialInvoice, propInvoices, propQuotes]);
+
   // Handle Client change
   const handleClientChange = (clientId: string) => {
     setSelectedClientId(clientId);
-    const client = clients.find(c => c.id === clientId);
+    const client = clients.find(c => c.id === clientId || c.name === clientId);
     if (client) {
       setSelectedClient(client);
-      setPlaceOfSupply(client.state);
-      setPlaceOfSupplyCode(client.stateCode);
+      setPlaceOfSupply(client.state || 'Madhya Pradesh');
+      setPlaceOfSupplyCode(client.stateCode || '23');
       if (hasShippingAddress && !shippingName) {
         setShippingName(client.name);
         setShippingAddress(client.shippingAddress || client.billingAddress);
@@ -246,18 +307,22 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
   const calculateItem = (item: InvoiceItem, isInter: boolean): InvoiceItem => {
     const qty = Math.max(0, Number(item.quantity) || 0);
     const rate = Math.max(0, Number(item.rate) || 0);
-    const gross = qty * rate;
+    const gross = round2(qty * rate);
 
     let discountAmount = 0;
-    if (item.discountType === 'percentage') {
-      discountAmount = (gross * (Number(item.discountValue) || 0)) / 100;
+    const dType = item.discountType || 'percentage';
+    const dVal = Math.max(0, Number(item.discountValue) || 0);
+
+    if (dType === 'percentage') {
+      const validPercent = Math.min(100, dVal);
+      discountAmount = round2((gross * validPercent) / 100);
     } else {
-      discountAmount = Number(item.discountValue) || 0;
+      discountAmount = Math.min(gross, round2(dVal));
     }
 
-    const taxableAmount = Math.max(0, gross - discountAmount);
-    const gstRate = Number(item.gstRate) || 0;
-    const totalGst = (taxableAmount * gstRate) / 100;
+    const taxableAmount = Math.max(0, round2(gross - discountAmount));
+    const gstRate = Math.max(0, Number(item.gstRate) || 0);
+    const totalGst = round2((taxableAmount * gstRate) / 100);
 
     let cgst = 0;
     let sgst = 0;
@@ -266,16 +331,18 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
     if (isInter) {
       igst = totalGst;
     } else {
-      cgst = totalGst / 2;
-      sgst = totalGst / 2;
+      cgst = round2(totalGst / 2);
+      sgst = round2(totalGst - cgst);
     }
 
-    const total = taxableAmount + totalGst;
+    const total = round2(taxableAmount + totalGst);
 
     return {
       ...item,
       quantity: qty,
       rate: rate,
+      discountType: dType,
+      discountValue: dVal,
       discountAmount,
       taxableAmount,
       cgstAmount: cgst,
@@ -481,7 +548,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
       pinCode: '452010',
       gstin: '23AHWPH3168H2Z2',
       pan: 'AHWPH3168H',
-      phone: '+91 99936 63668',
+      phone: businessProfile?.phone || '',
       email: 'Contact@udmtechno.com',
       website: 'https://Udmtechno.com',
       logoUrl: '/udm-logo.svg',
@@ -597,7 +664,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
   const handleDownloadPdf = async () => {
     setIsDownloadingPdf(true);
     try {
-      const filename = getInvoicePdfFilename(currentInvoiceData);
+      const filename = getInvoicePdfFilename(currentInvoiceData, clients);
       const invoiceData = currentInvoiceData;
 
       const wrapperId = `pdf-capture-wrapper-${Date.now()}`;
@@ -637,13 +704,14 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
 
   // Print Invoice
   const handlePrintInvoice = () => {
-    printInvoiceElement('live-invoice-pdf-preview');
+    const printTitle = getInvoicePdfFilename(currentInvoiceData, clients).replace('.pdf', '');
+    printInvoiceElement('live-invoice-pdf-preview', printTitle);
   };
 
   const handleClientSaved = async (newClientData: Partial<Client>) => {
     try {
       const created = await api.createClient(newClientData);
-      setClients(prev => [created, ...prev]);
+      setClients(prev => mergeUniqueClients(prev, [created]));
       setSelectedClientId(created.id);
       setSelectedClient(created);
       setPlaceOfSupply(created.state || 'Madhya Pradesh');
@@ -681,10 +749,8 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                 <h1 className="text-base sm:text-lg font-bold text-slate-900 truncate">
                   {initialInvoice ? `Edit #${invoiceNumber}` : 'Create GST Tax Invoice'}
                 </h1>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase whitespace-nowrap ${
-                  isInterState ? 'bg-teal-100 text-teal-900' : 'bg-emerald-100 text-emerald-800'
-                }`}>
-                  {isInterState ? 'IGST (Inter-State)' : 'CGST + SGST (Intra-State)'}
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase whitespace-nowrap bg-teal-100 text-teal-900">
+                  GST Invoice
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 truncate">
@@ -758,6 +824,11 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
               <span className="hidden md:inline">Email</span>
             </button>
 
+            <div className="flex items-center bg-teal-50 border border-teal-200 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-mono font-bold text-teal-950">
+              <span className="text-[10px] text-teal-700 uppercase font-bold mr-1 sm:mr-1.5">Total:</span>
+              <span className="text-xs sm:text-sm font-black text-teal-900">{formatINR(grandTotal)}</span>
+            </div>
+
             <button
               onClick={() => handleSave(true)}
               disabled={isSaving}
@@ -769,34 +840,48 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
           </div>
         </div>
 
-        {/* Payment / Due Tracker Bar */}
-        {initialInvoice && (
-          <div className="bg-gradient-to-r from-slate-850 to-slate-900 rounded-xl p-4 text-white flex flex-wrap items-center justify-between gap-3 border border-slate-750 shadow-2xs">
-            <div className="flex items-center gap-4">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Grand Total</span>
-                <p className="text-sm font-bold font-mono">{formatINR(grandTotal)}</p>
-              </div>
-              <div className="w-px h-8 bg-slate-700"></div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Advance Paid</span>
-                <p className="text-sm font-bold font-mono text-emerald-400">{formatINR(initialInvoice.amountPaid || 0)}</p>
-              </div>
-              <div className="w-px h-8 bg-slate-700"></div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-rose-400 tracking-wider">Balance Due</span>
-                <p className="text-lg font-bold font-mono text-rose-400">{formatINR(Math.max(0, grandTotal - (initialInvoice.amountPaid || 0)))}</p>
-              </div>
+        {/* Payment / Due & Grand Total Tracker Bar (Always visible) */}
+        <div className="bg-gradient-to-r from-slate-850 to-slate-900 rounded-xl p-3.5 sm:p-4 text-white flex flex-wrap items-center justify-between gap-3 border border-slate-750 shadow-2xs">
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider block">Grand Total</span>
+              <p className="text-base sm:text-lg font-black font-mono text-emerald-300">{formatINR(grandTotal)}</p>
             </div>
+            <div className="w-px h-8 bg-slate-700 hidden sm:block"></div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Gross Subtotal</span>
+              <p className="text-xs sm:text-sm font-bold font-mono text-slate-200">{formatINR(subtotal)}</p>
+            </div>
+            {(totalItemDiscount > 0 || globalDiscountAmount > 0) && (
+              <>
+                <div className="w-px h-8 bg-slate-700 hidden sm:block"></div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider block">Total Discount</span>
+                  <p className="text-xs sm:text-sm font-bold font-mono text-emerald-400">- {formatINR(totalItemDiscount + globalDiscountAmount)}</p>
+                </div>
+              </>
+            )}
+            <div className="w-px h-8 bg-slate-700 hidden sm:block"></div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-teal-400 tracking-wider block">GST Total</span>
+              <p className="text-xs sm:text-sm font-bold font-mono text-teal-200">{formatINR(totalGst)}</p>
+            </div>
+            <div className="w-px h-8 bg-slate-700 hidden sm:block"></div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-rose-400 tracking-wider block">Balance Due</span>
+              <p className="text-sm sm:text-base font-bold font-mono text-rose-400">{formatINR(calculatedBalanceDue)}</p>
+            </div>
+          </div>
+          {initialInvoice && (
             <button
               onClick={() => onRecordPayment?.(initialInvoice!)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+              className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer ml-auto"
             >
               <CreditCard className="w-3.5 h-3.5" />
-              Record Payment / Advance
+              Record Payment
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Mobile / Tablet Tab Switcher (< 1024px) */}
         <div className="lg:hidden flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
@@ -921,18 +1006,42 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Select Existing Client</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Select Existing Client <span className="text-[11px] font-bold text-teal-700">({clients.length} available)</span>
+                </label>
+                {selectedClientId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedClientId('');
+                      setSelectedClient(null);
+                    }}
+                    className="text-[10px] text-slate-500 hover:text-rose-600 underline cursor-pointer"
+                  >
+                    Clear selection
+                  </button>
+                )}
+              </div>
               <select
                 value={selectedClientId}
                 onChange={(e) => handleClientChange(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden truncate cursor-pointer"
               >
-                <option value="">-- Choose Existing Client --</option>
-                {clients.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.city}, {c.state} • GSTIN: {c.gstin || 'Unregistered'})
-                  </option>
-                ))}
+                <option value="">-- Choose Existing Client ({clients.length} Clients) --</option>
+                {clients.map(c => {
+                  const details = [
+                    c.phone,
+                    c.city ? c.city : (c.state ? c.state : null),
+                    c.gstin ? `GST: ${c.gstin}` : null
+                  ].filter(Boolean).join(' • ');
+
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {details ? `(${details})` : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -1113,8 +1222,8 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       </div>
                     </div>
 
-                    {/* Pricing, Quantity, Unit, GST, Total Row (HSN/SAC removed from UI as requested) */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-xs pt-1">
+                    {/* Pricing, Quantity, Unit, Discount, GST, Total Row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs pt-1">
                       <div>
                         <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Rate / Price (₹)</label>
                         <input
@@ -1155,6 +1264,37 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                         </select>
                       </div>
 
+                      {/* Service Discount Section */}
+                      <div>
+                        <div className="flex justify-between items-center mb-0.5">
+                          <label className="block text-[10px] font-semibold text-slate-500">Discount</label>
+                          {item.discountAmount > 0 && (
+                            <span className="text-[9.5px] font-mono text-emerald-700 font-bold">
+                              -₹{Math.round(item.discountAmount).toLocaleString('en-IN')}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0"
+                            value={item.discountValue || ''}
+                            onChange={(e) => updateItemField(idx, 'discountValue', Number(e.target.value) || 0)}
+                            className="w-full min-w-0 px-2 py-1.5 bg-white border border-slate-300 rounded-lg font-mono text-xs font-bold text-slate-900 focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden"
+                          />
+                          <select
+                            value={item.discountType || 'percentage'}
+                            onChange={(e) => updateItemField(idx, 'discountType', e.target.value)}
+                            className="px-1.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-[11px] font-bold text-slate-700 focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden cursor-pointer shrink-0"
+                          >
+                            <option value="percentage">%</option>
+                            <option value="fixed">₹</option>
+                          </select>
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">GST Rate</label>
                         <select
@@ -1169,7 +1309,14 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Total (incl. GST)</label>
+                        <div className="flex justify-between items-center mb-0.5">
+                          <label className="block text-[10px] font-semibold text-slate-500">Total (incl. GST)</label>
+                          {item.discountAmount > 0 && (
+                            <span className="text-[9px] font-mono text-slate-400">
+                              Tax: ₹{Math.round(item.taxableAmount).toLocaleString('en-IN')}
+                            </span>
+                          )}
+                        </div>
                         <div className="px-2 py-1.5 bg-teal-50 border border-teal-200 rounded-lg text-xs font-bold font-mono text-teal-950 text-right truncate">
                           {formatINR(item.total)}
                         </div>
@@ -1178,6 +1325,35 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                   </div>
                 );
               })}
+            </div>
+
+            {/* Quick Line Items Financial Summary & Grand Total Bar */}
+            <div className="mt-4 p-3.5 bg-gradient-to-r from-slate-900 via-slate-850 to-teal-950 text-white rounded-xl shadow-2xs border border-teal-800/60 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3 sm:gap-5 flex-wrap text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Gross Subtotal</span>
+                  <span className="font-mono font-bold text-slate-200">{formatINR(subtotal)}</span>
+                </div>
+                {(totalItemDiscount > 0 || globalDiscountAmount > 0) && (
+                  <div>
+                    <span className="text-[10px] text-emerald-400 block uppercase font-bold tracking-wider">Total Discount</span>
+                    <span className="font-mono font-bold text-emerald-300">- {formatINR(totalItemDiscount + globalDiscountAmount)}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-[10px] text-teal-400 block uppercase font-bold tracking-wider">Net Taxable</span>
+                  <span className="font-mono font-bold text-teal-200">{formatINR(totalTaxableAmount)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-teal-400 block uppercase font-bold tracking-wider">Total GST</span>
+                  <span className="font-mono font-bold text-teal-200">+{formatINR(totalGst)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 bg-emerald-500/20 px-3.5 py-2 rounded-lg border border-emerald-400/30">
+                <span className="text-xs uppercase font-black tracking-wider text-emerald-300">Grand Total:</span>
+                <span className="text-base sm:text-xl font-black font-mono text-emerald-300">{formatINR(grandTotal)}</span>
+              </div>
             </div>
           </div>
 
@@ -1415,12 +1591,19 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Invoice Overall Discount</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block font-semibold text-slate-700">Invoice Overall Discount</label>
+                      {globalDiscountAmount > 0 && (
+                        <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          -₹{Math.round(globalDiscountAmount).toLocaleString('en-IN')}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex gap-2">
                       <select
                         value={globalDiscountType}
                         onChange={(e) => setGlobalDiscountType(e.target.value as any)}
-                        className="w-24 px-2 py-2 bg-white border border-slate-300 rounded-lg text-xs shrink-0"
+                        className="w-24 px-2 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold shrink-0 cursor-pointer"
                       >
                         <option value="percentage">% Percent</option>
                         <option value="fixed">Fixed (₹)</option>
@@ -1428,12 +1611,18 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                       <input
                         type="number"
                         min="0"
-                        value={globalDiscountValue}
-                        onChange={(e) => setGlobalDiscountValue(Number(e.target.value))}
+                        step="0.01"
+                        value={globalDiscountValue || ''}
+                        onChange={(e) => setGlobalDiscountValue(Math.max(0, Number(e.target.value) || 0))}
                         placeholder="0"
-                        className="flex-1 min-w-0 px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-xs"
+                        className="flex-1 min-w-0 px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono font-bold text-slate-900 text-xs focus:ring-2 focus:ring-teal-700 outline-hidden"
                       />
                     </div>
+                    {globalDiscountAmount > 0 && (
+                      <p className="text-[10px] text-emerald-700 mt-1">
+                        Applied after line discounts across net taxable base.
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -1479,8 +1668,8 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                 {/* Advance Payment Calculation Breakdown Summary */}
                 <div className="p-3 bg-slate-900 text-white rounded-xl space-y-1.5 text-xs font-mono">
                   <div className="flex justify-between text-slate-300 text-[11px]">
-                    <span>Total Invoice Amount:</span>
-                    <span className="font-bold">{formatINR(grandTotal)}</span>
+                    <span className="font-bold text-slate-200 uppercase tracking-wider">Grand Total:</span>
+                    <span className="font-bold text-white text-xs">{formatINR(grandTotal)}</span>
                   </div>
                   {effectiveAdvance > 0 && (
                     <div className="flex justify-between text-emerald-400 text-[11px]">
@@ -1522,6 +1711,103 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
                 )}
               </div>
             )}
+          </div>
+
+          {/* Section: Comprehensive Invoice Grand Total Breakdown (Subtotal, Discounts like GST, Taxes & Final Price) */}
+          <div className="bg-white rounded-xl border border-teal-300 shadow-2xs overflow-hidden">
+            <div className="px-4 py-3 bg-gradient-to-r from-teal-900 to-teal-800 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-1 bg-white/10 rounded-md text-emerald-300 font-bold">₹</span>
+                <h3 className="text-xs font-bold uppercase tracking-wider">
+                  Invoice Grand Total &amp; Tax Breakdown
+                </h3>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-300">
+                Grand Total: {formatINR(grandTotal)}
+              </span>
+            </div>
+
+            <div className="p-4 space-y-2.5 text-xs">
+              <div className="flex justify-between text-slate-700">
+                <span className="font-medium">Services Gross Subtotal:</span>
+                <span className="font-mono font-bold text-slate-900">{formatINR(subtotal)}</span>
+              </div>
+
+              {/* Service & Overall Discounts */}
+              {(totalItemDiscount > 0 || globalDiscountAmount > 0) && (
+                <div className="space-y-1 bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200">
+                  <div className="flex justify-between font-bold text-emerald-800">
+                    <span className="flex items-center gap-1">
+                      <span>Total Discounts:</span>
+                    </span>
+                    <span className="font-mono">- {formatINR(totalItemDiscount + globalDiscountAmount)}</span>
+                  </div>
+                  {totalItemDiscount > 0 && (
+                    <div className="flex justify-between text-[11px] text-emerald-700 pl-2">
+                      <span>• Discount on Line Services:</span>
+                      <span className="font-mono">- {formatINR(totalItemDiscount)}</span>
+                    </div>
+                  )}
+                  {globalDiscountAmount > 0 && (
+                    <div className="flex justify-between text-[11px] text-emerald-700 pl-2">
+                      <span>• Overall Invoice Discount ({globalDiscountValue}{globalDiscountType === 'percentage' ? '%' : '₹'}):</span>
+                      <span className="font-mono">- {formatINR(globalDiscountAmount)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-between font-semibold text-slate-800 border-t border-slate-100 pt-2">
+                <span>Taxable Amount (Net Base):</span>
+                <span className="font-mono font-bold text-slate-900">{formatINR(totalTaxableAmount)}</span>
+              </div>
+
+              {/* GST Breakdown */}
+              {totalGst > 0 && (
+                <div className="bg-teal-50/60 p-2.5 rounded-lg border border-teal-200 flex justify-between font-bold text-teal-950">
+                  <span>Total GST:</span>
+                  <span className="font-mono">+ {formatINR(totalGst)}</span>
+                </div>
+              )}
+
+              {totalAdditionalCharges > 0 && (
+                <div className="flex justify-between text-slate-700">
+                  <span>Additional Charges:</span>
+                  <span className="font-mono font-semibold">+ {formatINR(totalAdditionalCharges)}</span>
+                </div>
+              )}
+
+              {roundOff !== 0 && (
+                <div className="flex justify-between text-slate-500 text-[11px]">
+                  <span>Round Off:</span>
+                  <span className="font-mono">{roundOff > 0 ? `+${formatINR(roundOff)}` : formatINR(roundOff)}</span>
+                </div>
+              )}
+
+              {/* Final Invoice Grand Total */}
+              <div className="p-3 bg-slate-900 text-white rounded-xl flex items-center justify-between border border-slate-800">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-400 block">Grand Total (Invoice Value)</span>
+                  <span className="text-base sm:text-xl font-bold font-mono text-emerald-300">{formatINR(grandTotal)}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 block">Amount in words:</span>
+                  <span className="text-[10px] text-slate-300 italic font-medium max-w-[200px] truncate block">{totalInWords}</span>
+                </div>
+              </div>
+
+              {effectiveAdvance > 0 && (
+                <div className="flex justify-between text-emerald-700 font-semibold text-xs pt-1">
+                  <span>Less: Advance Payment Received:</span>
+                  <span className="font-mono">- {formatINR(effectiveAdvance)}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between text-sm font-bold text-rose-700 pt-1 border-t border-slate-200">
+                <span>Net Balance Due:</span>
+                <span className="font-mono">{formatINR(calculatedBalanceDue)}</span>
+              </div>
+            </div>
           </div>
 
           {/* Section 5: Terms, Notes & Bank Toggle (Expandable & Collapsible) */}

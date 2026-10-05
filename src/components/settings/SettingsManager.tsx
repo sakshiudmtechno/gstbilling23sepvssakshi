@@ -41,7 +41,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
       pinCode: '452010',
       gstin: '23AHWPH3168H2Z2',
       pan: 'AHWPH3168H',
-      phone: '+91 99936 63668',
+      phone: businessProfile?.phone || '',
       email: 'Contact@udmtechno.com',
       website: 'https://Udmtechno.com',
       logoUrl: '/udm-logo.svg',

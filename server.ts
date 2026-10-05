@@ -476,7 +476,7 @@ app.get('/api/business-profile', async (req, res) => {
         pinCode: '452001',
         country: 'India',
         email: 'billing@udmtechno.com',
-        phone: '9826000000',
+        phone: '',
         authorizedSignatoryName: 'Authorized Signatory'
       };
       await setDoc('settings', 'businessProfile', profile, true);
@@ -620,14 +620,83 @@ app.get('/api/clients', async (req, res) => {
       orderDirection: 'desc'
     });
 
+    // Auto-discover and ensure any clients from existing invoices or quotes are included
+    try {
+      const invoicesResult = await listDocs('invoices', { pageSize: 500 });
+      const quotesResult = await listDocs('quotes', { pageSize: 500 });
+
+      const existingNames = new Set(result.docs.map((c: any) => c.name?.toLowerCase().trim()));
+      const existingIds = new Set(result.docs.map((c: any) => c.id));
+
+      const discoverClient = (cl: any) => {
+        if (!cl || !cl.name || typeof cl.name !== 'string' || !cl.name.trim()) return;
+        const normName = cl.name.toLowerCase().trim();
+        if (!existingNames.has(normName) && (!cl.id || !existingIds.has(cl.id))) {
+          existingNames.add(normName);
+          const cId = cl.id || `client_auto_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+          existingIds.add(cId);
+
+          const clientDoc = {
+            id: cId,
+            clientNumber: cl.clientNumber || `CLI-${String(result.docs.length + 1).padStart(3, '0')}`,
+            name: cl.name.trim(),
+            contactPerson: cl.contactPerson || cl.name.trim(),
+            email: cl.email || '',
+            phone: cl.phone || '',
+            billingAddress: cl.billingAddress || 'Not Provided',
+            shippingAddress: cl.shippingAddress || '',
+            city: cl.city || '',
+            state: cl.state || 'Madhya Pradesh',
+            stateCode: cl.stateCode || '23',
+            country: cl.country || 'India',
+            pinCode: cl.pinCode || '',
+            gstin: cl.gstin || '',
+            pan: cl.pan || '',
+            customerType: cl.customerType || 'B2B',
+            createdAt: cl.createdAt || new Date().toISOString()
+          };
+
+          result.docs.push(clientDoc);
+          setDoc('clients', cId, clientDoc).catch(() => {});
+        }
+      };
+
+      for (const inv of invoicesResult.docs) {
+        const clientCandidate = inv.client || (inv.clientName ? {
+          name: inv.clientName,
+          phone: inv.phone || '',
+          email: inv.email || '',
+          billingAddress: inv.address || 'Not Provided',
+          state: inv.placeOfSupply || 'Madhya Pradesh',
+          stateCode: inv.placeOfSupplyCode || '23',
+          gstin: inv.clientGstin || ''
+        } : null);
+        discoverClient(clientCandidate);
+      }
+      for (const q of quotesResult.docs) {
+        const quoteClientCandidate = q.client || (q.clientName || q.customerName ? {
+          name: q.clientName || q.customerName,
+          phone: q.clientPhone || q.phone || '',
+          email: q.clientEmail || q.email || '',
+          billingAddress: q.clientAddress || q.address || 'Not Provided',
+          state: q.placeOfSupply || 'Madhya Pradesh',
+          stateCode: q.placeOfSupplyCode || '23',
+          gstin: q.clientGstin || ''
+        } : null);
+        discoverClient(quoteClientCandidate);
+      }
+    } catch (e) {
+      // Non-blocking discovery
+    }
+
     res.json({
       success: true,
       data: result.docs,
       pagination: {
-        total: result.total,
+        total: result.docs.length,
         page: result.page,
         pageSize: result.pageSize,
-        hasMore: result.hasMore
+        hasMore: false
       }
     });
   } catch (err: any) {
@@ -779,8 +848,100 @@ app.delete('/api/clients/:id', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// INVOICES CRUD
+// INVOICES & PAYMENTS LOGIC
 // -------------------------------------------------------------
+
+export function normalizeInvoicePayments(invoice: any): { invoice: any; hasChanged: boolean } {
+  if (!invoice) return { invoice, hasChanged: false };
+  let payments = Array.isArray(invoice.payments) ? [...invoice.payments] : [];
+  let hasChanged = false;
+
+  const advanceAmt = Number(invoice.advanceAmount) || 0;
+  const paidAmt = Number(invoice.amountPaid) || 0;
+  const initialRecorded = advanceAmt > 0 ? advanceAmt : paidAmt;
+
+  if (payments.length === 0 && initialRecorded > 0) {
+    const serviceName = (invoice.items && invoice.items.length > 0)
+      ? invoice.items.map((i: any) => i.name).filter(Boolean).join(', ')
+      : (invoice.servicePackage || 'Invoice Services');
+
+    const initialAdvancePayment = {
+      id: `pay_adv_${invoice.id}`,
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      clientId: invoice.clientId || invoice.client?.id || '',
+      clientName: invoice.client?.name || invoice.clientName || 'Client',
+      serviceName,
+      dealId: invoice.dealId || '',
+      dealTitle: invoice.dealTitle || '',
+      amount: round2(initialRecorded),
+      paymentDate: invoice.invoiceDate || (invoice.createdAt ? invoice.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]),
+      paymentType: (initialRecorded >= (Number(invoice.grandTotal) || 0) && (Number(invoice.grandTotal) || 0) > 0) ? 'Full Payment' : 'Advance',
+      paymentMethod: invoice.paymentMethod || 'Bank Transfer',
+      transactionId: 'INITIAL-ADVANCE',
+      notes: 'Initial payment recorded at invoice creation',
+      remainingBalance: round2(Math.max(0, (Number(invoice.grandTotal) || 0) - initialRecorded)),
+      createdAt: invoice.createdAt || new Date().toISOString()
+    };
+    payments.push(initialAdvancePayment);
+    invoice.payments = payments;
+    invoice.amountPaid = round2(payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
+    invoice.balanceDue = round2(Math.max(0, (Number(invoice.grandTotal) || 0) - invoice.amountPaid));
+    hasChanged = true;
+  } else if (payments.length > 0) {
+    // Ensure all existing payments have clientName, invoiceNumber, serviceName populated
+    let paymentsUpdated = false;
+    payments = payments.map((p: any) => {
+      const clientName = p.clientName || invoice.client?.name || invoice.clientName || 'Client';
+      const invoiceNumber = p.invoiceNumber || invoice.invoiceNumber || '';
+      const serviceName = p.serviceName || (
+        (invoice.items && invoice.items.length > 0)
+          ? invoice.items.map((i: any) => i.name).filter(Boolean).join(', ')
+          : (invoice.servicePackage || 'Invoice Services')
+      );
+      if (!p.clientName || !p.invoiceNumber || !p.serviceName) {
+        paymentsUpdated = true;
+        return {
+          ...p,
+          clientName,
+          invoiceNumber,
+          serviceName
+        };
+      }
+      return p;
+    });
+
+    if (paymentsUpdated) {
+      invoice.payments = payments;
+      hasChanged = true;
+    }
+
+    const actualPaid = round2(payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
+    const actualBal = round2(Math.max(0, (Number(invoice.grandTotal) || 0) - actualPaid));
+    if (invoice.amountPaid !== actualPaid || invoice.balanceDue !== actualBal) {
+      invoice.amountPaid = actualPaid;
+      invoice.balanceDue = actualBal;
+      hasChanged = true;
+    }
+  }
+
+  // Update status if needed
+  if (invoice.status !== 'draft' && invoice.status !== 'cancelled') {
+    const bal = Number(invoice.balanceDue) || 0;
+    const paid = Number(invoice.amountPaid) || 0;
+    const grand = Number(invoice.grandTotal) || 0;
+    if (bal <= 0.01 && grand > 0 && invoice.status !== 'paid') {
+      invoice.status = 'paid';
+      hasChanged = true;
+    } else if (paid > 0 && bal > 0.01 && invoice.status !== 'partially_paid') {
+      invoice.status = 'partially_paid';
+      hasChanged = true;
+    }
+  }
+
+  return { invoice, hasChanged };
+}
+
 app.get('/api/invoices', async (req, res) => {
   try {
     const { page, pageSize, status, search, financialYear, clientId, orderBy, orderDir } = req.query;
@@ -799,6 +960,14 @@ app.get('/api/invoices', async (req, res) => {
       orderByField: (orderBy as string) || 'invoiceDate',
       orderDirection: (orderDir as any) || 'desc'
     });
+
+    // Normalize each invoice so that amountPaid and balanceDue strictly reflect the payments array
+    for (const inv of result.docs) {
+      const { hasChanged } = normalizeInvoicePayments(inv);
+      if (hasChanged) {
+        setDoc('invoices', inv.id, inv, true).catch(() => {});
+      }
+    }
 
     res.json({
       success: true,
@@ -820,6 +989,10 @@ app.get('/api/invoices/:id', async (req, res) => {
     const invoice = await getDoc('invoices', req.params.id);
     if (!invoice) {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
+    }
+    const { hasChanged } = normalizeInvoicePayments(invoice);
+    if (hasChanged) {
+      await setDoc('invoices', invoice.id, invoice, true);
     }
     res.json({ success: true, data: invoice });
   } catch (err: any) {
@@ -1081,13 +1254,119 @@ app.delete('/api/invoices/:id', async (req, res) => {
   }
 });
 
+// Get Payments for Invoice
+app.get('/api/invoices/:id/payments', async (req, res) => {
+  try {
+    const rawInvoice = await getDoc('invoices', req.params.id);
+    if (!rawInvoice) {
+      return res.status(404).json({ success: false, message: 'Invoice not found' });
+    }
+    const { invoice, hasChanged } = normalizeInvoicePayments(rawInvoice);
+    if (hasChanged) {
+      await setDoc('invoices', invoice.id, invoice, true);
+    }
+    const payments = Array.isArray(invoice.payments) ? invoice.payments : [];
+    res.json({
+      success: true,
+      data: payments,
+      invoiceNumber: invoice.invoiceNumber,
+      clientName: invoice.client?.name || invoice.clientName || 'Client',
+      grandTotal: invoice.grandTotal || 0,
+      amountPaid: invoice.amountPaid || 0,
+      balanceDue: invoice.balanceDue || 0,
+      status: invoice.status
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Global Payments Listing (filtered by invoiceId or clientId)
+app.get('/api/payments', async (req, res) => {
+  try {
+    const { invoiceId, clientId, type } = req.query;
+    const invoicesResult = await listDocs('invoices', { pageSize: 500 });
+    let allPayments: any[] = [];
+    for (const inv of invoicesResult.docs) {
+      const { invoice: normalizedInv, hasChanged } = normalizeInvoicePayments(inv);
+      if (hasChanged) {
+        setDoc('invoices', normalizedInv.id, normalizedInv, true).catch(() => {});
+      }
+      const invPayments = Array.isArray(normalizedInv.payments) ? normalizedInv.payments : [];
+      for (const p of invPayments) {
+        allPayments.push({
+          ...p,
+          invoiceId: normalizedInv.id,
+          invoiceNumber: normalizedInv.invoiceNumber,
+          clientName: normalizedInv.client?.name || normalizedInv.clientName || p.clientName || 'Client',
+          clientId: normalizedInv.clientId || normalizedInv.client?.id || p.clientId || '',
+          invoiceGrandTotal: normalizedInv.grandTotal || 0,
+          invoiceBalanceDue: normalizedInv.balanceDue || 0
+        });
+      }
+    }
+
+    // Also include Renewal Payments from recurring invoices (AMC)
+    try {
+      const recurringResult = await listDocs('recurringInvoices', { pageSize: 500 });
+      for (const rec of recurringResult.docs) {
+        const recPayments = Array.isArray(rec.renewalPayments) ? rec.renewalPayments : [];
+        for (const rp of recPayments) {
+          allPayments.push({
+            id: rp.id,
+            clientId: rp.clientId || rec.clientId,
+            clientName: rp.clientName || rec.clientName || 'Client',
+            serviceName: rp.serviceName || rec.serviceName || rec.title || 'Monthly AMC',
+            recurringInvoiceId: rec.id,
+            recurringNumber: rec.recurringNumber,
+            renewalPeriod: rp.renewalPeriod || '',
+            renewalAmount: Number(rp.renewalAmount || rec.monthlyRenewalAmount || rp.amount || 0),
+            amount: Number(rp.amount || 0),
+            paymentDate: rp.paymentDate || rp.createdAt?.split('T')[0],
+            paymentType: 'Renewal Payment',
+            paymentMethod: rp.paymentMethod || 'UPI',
+            transactionId: rp.transactionId || rp.referenceId || '',
+            referenceId: rp.referenceId || rp.transactionId || '',
+            notes: rp.notes || '',
+            paymentStatus: rp.paymentStatus || 'paid',
+            remainingBalance: 0,
+            dealId: '',
+            dealTitle: '',
+            createdAt: rp.createdAt || new Date().toISOString()
+          });
+        }
+      }
+    } catch (e) {
+      // Non-blocking
+    }
+
+    if (invoiceId) {
+      allPayments = allPayments.filter(p => p.invoiceId === invoiceId);
+    }
+    if (clientId) {
+      allPayments = allPayments.filter(p => p.clientId === clientId);
+    }
+    if (type) {
+      allPayments = allPayments.filter(p => p.paymentType === type);
+    }
+
+    allPayments.sort((a, b) => new Date(b.paymentDate || b.createdAt || 0).getTime() - new Date(a.paymentDate || a.createdAt || 0).getTime());
+
+    res.json({ success: true, data: allPayments });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Record Payment on Invoice
 app.post('/api/invoices/:id/payments', async (req, res) => {
   try {
-    const invoice = await getDoc('invoices', req.params.id);
-    if (!invoice) {
+    const rawInvoice = await getDoc('invoices', req.params.id);
+    if (!rawInvoice) {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
+
+    const { invoice } = normalizeInvoicePayments(rawInvoice);
 
     const parseResult = PaymentRecordSchema.safeParse(req.body);
     if (!parseResult.success) {
@@ -1099,22 +1378,78 @@ app.post('/api/invoices/:id/payments', async (req, res) => {
     }
 
     const paymentAmount = round2(parseResult.data.amount);
+
+    // Resolve client
+    const clientId = parseResult.data.clientId || invoice.clientId || invoice.client?.id || '';
+    const clientName = parseResult.data.clientName || invoice.client?.name || invoice.clientName || 'Client';
+
+    // Resolve service names from items or package
+    const serviceName = parseResult.data.serviceName || (
+      (invoice.items && invoice.items.length > 0)
+        ? invoice.items.map((i: any) => i.name).filter(Boolean).join(', ')
+        : (invoice.servicePackage || 'Invoice Services')
+    );
+
+    // Resolve deal relationship from onboardings if available
+    let dealId = parseResult.data.dealId || invoice.dealId || '';
+    let dealTitle = parseResult.data.dealTitle || invoice.dealTitle || '';
+    if (!dealId) {
+      try {
+        const dealsResult = await listDocs('onboardings', {
+          pageSize: 10,
+          filterFn: (o: any) => o.invoiceId === invoice.id || (clientId && o.clientId === clientId)
+        });
+        if (dealsResult.docs.length > 0) {
+          const matchedDeal = dealsResult.docs[0];
+          dealId = matchedDeal.id;
+          dealTitle = matchedDeal.businessName || matchedDeal.servicePackage || matchedDeal.customerName || '';
+        }
+      } catch (e) {
+        // Non-blocking
+      }
+    }
+
+    // Existing payments list
+    let existingPayments: any[] = Array.isArray(invoice.payments) ? [...invoice.payments] : [];
+
+    const currentTotalPaidBefore = round2(existingPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
+    const newTotalPaid = round2(currentTotalPaidBefore + paymentAmount);
+    const newBalanceDue = round2(Math.max(0, Number(invoice.grandTotal) - newTotalPaid));
+
+    // Determine default paymentType if not explicitly chosen
+    let paymentType = parseResult.data.paymentType;
+    if (!paymentType) {
+      if (newBalanceDue <= 0.01) {
+        paymentType = currentTotalPaidBefore > 0 ? 'Balance Payment' : 'Full Payment';
+      } else if (currentTotalPaidBefore === 0) {
+        paymentType = 'Advance';
+      } else {
+        paymentType = 'Partial Payment';
+      }
+    }
+
     const newPayment = {
-      id: `pay_${Date.now()}`,
+      id: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      clientId,
+      clientName,
+      serviceName,
+      dealId,
+      dealTitle,
       amount: paymentAmount,
       paymentDate: parseResult.data.paymentDate || new Date().toISOString().split('T')[0],
-      paymentMethod: parseResult.data.paymentMethod || 'Bank Transfer',
+      paymentType,
+      paymentMethod: parseResult.data.paymentMethod || 'UPI',
       transactionId: parseResult.data.transactionId || '',
       notes: parseResult.data.notes || '',
+      remainingBalance: newBalanceDue,
       createdAt: new Date().toISOString()
     };
 
-    const payments = [...(invoice.payments || []), newPayment];
-    const advance = round2(Number(invoice.advanceAmount) || 0);
-    const paymentsTotal = round2(payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
-    const totalPaid = round2(advance + paymentsTotal);
-    const balanceDue = round2(Math.max(0, invoice.grandTotal - totalPaid));
+    const updatedPayments = [...existingPayments, newPayment];
+    const totalPaid = round2(updatedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
+    const balanceDue = round2(Math.max(0, Number(invoice.grandTotal) - totalPaid));
 
     let status = invoice.status;
     if (balanceDue <= 0.01) {
@@ -1125,7 +1460,84 @@ app.post('/api/invoices/:id/payments', async (req, res) => {
 
     const updatedInvoice = {
       ...invoice,
-      payments,
+      payments: updatedPayments,
+      amountPaid: totalPaid,
+      balanceDue,
+      status,
+      updatedAt: new Date().toISOString()
+    };
+
+    await setDoc('invoices', invoice.id, updatedInvoice, true);
+
+    // If dealId exists, also sync to deal's payment history (unless paymentType is 'Renewal Payment')
+    if (dealId && paymentType !== 'Renewal Payment') {
+      try {
+        const deal = await getDoc('onboardings', dealId);
+        if (deal) {
+          deal.paymentHistory = deal.paymentHistory || [];
+          deal.paymentHistory.push({
+            id: newPayment.id,
+            amount: paymentAmount,
+            date: newPayment.paymentDate,
+            method: newPayment.paymentMethod,
+            type: newPayment.paymentType,
+            notes: `Invoice #${invoice.invoiceNumber}: ${newPayment.notes || ''}`.trim()
+          });
+          const dealPaid = deal.paymentHistory.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+          deal.advancePaid = dealPaid;
+          deal.totalReceived = dealPaid;
+          deal.remainingBalance = Math.max(0, (deal.totalPackageValue || deal.totalDealValue || 0) - dealPaid);
+          deal.paymentStatus = deal.remainingBalance <= 0.01 ? 'paid' : (dealPaid > 0 ? 'partially_paid' : 'unpaid');
+          deal.updatedAt = new Date().toISOString();
+          await setDoc('onboardings', deal.id, deal, true);
+        }
+      } catch (e) {
+        console.warn('Failed to sync payment to onboarding deal:', e);
+      }
+    }
+
+    await addAuditLog(
+      'Payment Recorded',
+      'payment',
+      invoice.id,
+      invoice.invoiceNumber,
+      'UDM Admin',
+      `Recorded ₹${paymentAmount} (${paymentType}) via ${newPayment.paymentMethod} for ${clientName} (Bal: ₹${balanceDue})`
+    );
+
+    res.json({ success: true, data: updatedInvoice, payment: newPayment });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Delete Payment from Invoice
+app.delete('/api/invoices/:id/payments/:paymentId', async (req, res) => {
+  try {
+    const invoice = await getDoc('invoices', req.params.id);
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: 'Invoice not found' });
+    }
+
+    const { paymentId } = req.params;
+    const existingPayments = Array.isArray(invoice.payments) ? invoice.payments : [];
+    const filteredPayments = existingPayments.filter((p: any) => p.id !== paymentId);
+
+    const totalPaid = round2(filteredPayments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0));
+    const balanceDue = round2(Math.max(0, Number(invoice.grandTotal) - totalPaid));
+
+    let status = invoice.status;
+    if (balanceDue <= 0.01 && Number(invoice.grandTotal) > 0) {
+      status = 'paid';
+    } else if (totalPaid > 0) {
+      status = 'partially_paid';
+    } else {
+      status = invoice.status === 'paid' || invoice.status === 'partially_paid' ? 'sent' : invoice.status;
+    }
+
+    const updatedInvoice = {
+      ...invoice,
+      payments: filteredPayments,
       amountPaid: totalPaid,
       balanceDue,
       status,
@@ -1134,15 +1546,15 @@ app.post('/api/invoices/:id/payments', async (req, res) => {
 
     await setDoc('invoices', invoice.id, updatedInvoice, true);
     await addAuditLog(
-      'Payment Recorded',
+      'Payment Deleted',
       'payment',
       invoice.id,
       invoice.invoiceNumber,
       'UDM Admin',
-      `Recorded ₹${paymentAmount} via ${newPayment.paymentMethod} (Bal: ₹${balanceDue})`
+      `Payment ${paymentId} removed. New Balance: ₹${balanceDue}`
     );
 
-    res.json({ success: true, data: updatedInvoice, payment: newPayment });
+    res.json({ success: true, data: updatedInvoice });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1289,6 +1701,40 @@ app.post('/api/quotes', async (req, res) => {
       additionalCharges: quoteData.additionalCharges
     }, quoteData.status || 'draft');
 
+    // Ensure client is saved to clients collection
+    if (quoteData.client && quoteData.client.name) {
+      try {
+        const cId = quoteData.client.id || quoteData.clientId || `client_${Date.now()}`;
+        quoteData.clientId = cId;
+        const existing = await getDoc('clients', cId);
+        if (!existing) {
+          const clientDoc = {
+            id: cId,
+            clientNumber: quoteData.client.clientNumber || `CLI-${Date.now().toString().slice(-4)}`,
+            name: quoteData.client.name,
+            contactPerson: quoteData.client.contactPerson || quoteData.client.name,
+            email: quoteData.client.email || '',
+            phone: quoteData.client.phone || '',
+            billingAddress: quoteData.client.billingAddress || 'Not Provided',
+            shippingAddress: quoteData.client.shippingAddress || '',
+            city: quoteData.client.city || '',
+            state: quoteData.client.state || quoteData.placeOfSupply || 'Madhya Pradesh',
+            stateCode: quoteData.client.stateCode || quoteData.placeOfSupplyCode || '23',
+            country: 'India',
+            pinCode: quoteData.client.pinCode || '',
+            gstin: quoteData.client.gstin || '',
+            pan: quoteData.client.pan || '',
+            customerType: quoteData.client.customerType || 'B2B',
+            createdAt: new Date().toISOString()
+          };
+          await setDoc('clients', cId, clientDoc);
+          quoteData.client = clientDoc;
+        }
+      } catch (e) {
+        // Non-blocking
+      }
+    }
+
     const newQuote = {
       ...quoteData,
       id: newId,
@@ -1384,11 +1830,103 @@ app.post('/api/quotes/:id/convert-to-invoice', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Quote not found' });
     }
 
+    if (quote.status === 'converted' && quote.convertedToInvoiceId) {
+      const existingInv = await getDoc('invoices', quote.convertedToInvoiceId);
+      if (existingInv) {
+        return res.json({ success: true, invoice: existingInv, alreadyConverted: true });
+      }
+    }
+
+    let client = quote.client;
+    if (!client && quote.clientId) {
+      client = await getDoc('clients', quote.clientId);
+    }
+    if (!client) {
+      const fallbackName = quote.clientName || quote.customerName || (quote as any).companyName || 'Customer';
+      client = {
+        id: quote.clientId || `client_auto_${Date.now()}`,
+        name: fallbackName,
+        contactPerson: quote.clientName || fallbackName,
+        email: quote.clientEmail || quote.email || '',
+        phone: quote.clientPhone || quote.phone || '',
+        billingAddress: quote.clientAddress || quote.address || 'Not Provided',
+        city: quote.clientCity || quote.city || '',
+        state: quote.placeOfSupply || 'Madhya Pradesh',
+        stateCode: quote.placeOfSupplyCode || '23',
+        country: 'India',
+        pinCode: '',
+        gstin: quote.clientGstin || quote.gstin || '',
+        pan: '',
+        customerType: 'B2B',
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    // Ensure converted client is saved to clients collection
+    if (client && client.name) {
+      try {
+        const cId = client.id || `client_${Date.now()}`;
+        client.id = cId;
+        const existing = await getDoc('clients', cId);
+        if (!existing) {
+          const clientDoc = {
+            id: cId,
+            clientNumber: client.clientNumber || `CLI-${Date.now().toString().slice(-4)}`,
+            name: client.name,
+            contactPerson: client.contactPerson || client.name,
+            email: client.email || '',
+            phone: client.phone || '',
+            billingAddress: client.billingAddress || 'Not Provided',
+            shippingAddress: client.shippingAddress || '',
+            city: client.city || '',
+            state: client.state || quote.placeOfSupply || 'Madhya Pradesh',
+            stateCode: client.stateCode || quote.placeOfSupplyCode || '23',
+            country: client.country || 'India',
+            pinCode: client.pinCode || '',
+            gstin: client.gstin || '',
+            pan: client.pan || '',
+            customerType: client.customerType || 'B2B',
+            createdAt: new Date().toISOString()
+          };
+          await setDoc('clients', cId, clientDoc);
+          client = clientDoc;
+        }
+      } catch (e) {
+        // Non-blocking
+      }
+    }
+
     const nextNumber = await generateNextInvoiceNumber();
     const today = new Date().toISOString().split('T')[0];
     const dueDate = new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0];
     const businessProfile = (await getDoc('settings', 'businessProfile')) || {};
     const invoiceSettings = (await getDoc('settings', 'invoiceSettings')) || {};
+
+    const isInterState = quote.isInterState ?? ((client?.stateCode || '23') !== (businessProfile.stateCode || '23'));
+    const rawItems = (quote.items || []).map((item: any, idx: number) => ({
+      id: item.id || `item_${idx}_${Date.now()}`,
+      name: item.name || 'Service',
+      description: item.description || '',
+      hsnSac: item.hsnSac || '998314',
+      quantity: Number(item.quantity) || 1,
+      unit: item.unit || 'NOS',
+      rate: Number(item.rate) || 0,
+      discountType: item.discountType || 'percentage',
+      discountValue: Number(item.discountValue) || 0,
+      discountAmount: Number(item.discountAmount) || 0,
+      taxableAmount: Number(item.taxableAmount) || Math.max(0, (Number(item.rate) || 0) * (Number(item.quantity) || 1) - (Number(item.discountAmount) || 0)),
+      gstRate: Number(item.gstRate) || 0
+    }));
+
+    const calculatedTotals = calculateInvoiceTotals(rawItems, {
+      isInterState,
+      isReverseCharge: quote.isReverseCharge,
+      discountType: quote.discountType || 'percentage',
+      discountValue: Number(quote.discountValue) || 0,
+      additionalCharges: quote.additionalCharges || [],
+      advanceAmount: 0,
+      paymentsTotal: 0
+    }, 'draft');
 
     const newInvoice: any = {
       id: `inv_${Date.now()}`,
@@ -1399,34 +1937,34 @@ app.post('/api/quotes/:id/convert-to-invoice', async (req, res) => {
       billingStartDate: today,
       billingEndDate: dueDate,
       billingPeriod: `${today} to ${dueDate}`,
-      placeOfSupply: quote.placeOfSupply,
-      placeOfSupplyCode: quote.placeOfSupplyCode,
+      placeOfSupply: quote.placeOfSupply || client?.state || 'Madhya Pradesh',
+      placeOfSupplyCode: quote.placeOfSupplyCode || client?.stateCode || '23',
       currency: quote.currency || 'INR',
       financialYear: 'FY 2026-27',
-      isInterState: quote.isInterState,
+      isInterState,
       status: 'draft',
       template: quote.template || 'classic',
       seller: businessProfile,
-      clientId: quote.clientId,
-      client: quote.client,
-      items: quote.items || [],
+      clientId: client.id || quote.clientId,
+      client: client,
+      items: calculatedTotals.items,
       discountType: quote.discountType || 'percentage',
       discountValue: quote.discountValue || 0,
-      discountAmount: quote.discountAmount || 0,
+      discountAmount: calculatedTotals.globalDiscountAmount,
       additionalCharges: quote.additionalCharges || [],
-      subtotal: quote.subtotal,
-      totalItemDiscount: 0,
-      totalTaxableAmount: quote.totalTaxableAmount,
-      totalCgst: quote.totalCgst,
-      totalSgst: quote.totalSgst,
-      totalIgst: quote.totalIgst,
-      totalGst: quote.totalGst,
-      totalAdditionalCharges: 0,
-      roundOff: quote.roundOff || 0,
-      grandTotal: quote.grandTotal,
-      totalInWords: quote.totalInWords,
+      subtotal: calculatedTotals.subtotal,
+      totalItemDiscount: calculatedTotals.totalItemDiscount,
+      totalTaxableAmount: calculatedTotals.totalTaxableAmount,
+      totalCgst: calculatedTotals.totalCgst,
+      totalSgst: calculatedTotals.totalSgst,
+      totalIgst: calculatedTotals.totalIgst,
+      totalGst: calculatedTotals.totalGst,
+      totalAdditionalCharges: calculatedTotals.totalAdditionalCharges,
+      roundOff: calculatedTotals.roundOff,
+      grandTotal: calculatedTotals.grandTotal,
+      totalInWords: calculatedTotals.totalInWords,
       amountPaid: 0,
-      balanceDue: quote.grandTotal,
+      balanceDue: calculatedTotals.grandTotal,
       payments: [],
       showBankDetails: true,
       showUpiQr: true,
@@ -1594,12 +2132,237 @@ app.delete('/api/credit-notes/:id', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// RECURRING INVOICES CRUD
+// RECURRING INVOICES & AMC LOGIC
 // -------------------------------------------------------------
+
+function padRec2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function formatDateRecISO(d: Date): string {
+  return `${d.getFullYear()}-${padRec2(d.getMonth() + 1)}-${padRec2(d.getDate())}`;
+}
+
+const REC_MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+const REC_MONTH_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
+export function calculateMonthlyPeriodDates(startDateStr: string): {
+  periodStartDate: string;
+  currentExpiryDate: string;
+  nextRenewalDate: string;
+  periodName: string;
+} {
+  const parts = (startDateStr || formatDateRecISO(new Date())).split('T')[0].split('-').map(Number);
+  const startYear = parts[0];
+  const startMonth = parts[1] - 1;
+  const startDay = parts[2];
+
+  let expiryDate: Date;
+  let nextRenewalDate: Date;
+  let periodName: string;
+
+  if (startDay === 1) {
+    expiryDate = new Date(startYear, startMonth + 1, 0);
+    nextRenewalDate = new Date(startYear, startMonth + 1, 1);
+    periodName = `${REC_MONTH_NAMES[startMonth]} ${startYear}`;
+  } else {
+    expiryDate = new Date(startYear, startMonth + 1, startDay - 1);
+    nextRenewalDate = new Date(startYear, startMonth + 1, startDay);
+    periodName = `${padRec2(startDay)} ${REC_MONTH_SHORT[startMonth]} - ${padRec2(expiryDate.getDate())} ${REC_MONTH_SHORT[expiryDate.getMonth()]} ${expiryDate.getFullYear()}`;
+  }
+
+  return {
+    periodStartDate: formatDateRecISO(new Date(startYear, startMonth, startDay)),
+    currentExpiryDate: formatDateRecISO(expiryDate),
+    nextRenewalDate: formatDateRecISO(nextRenewalDate),
+    periodName
+  };
+}
+
+export function determineRenewalStatusBackend(
+  currentExpiryDateStr?: string,
+  paymentStatus?: string,
+  todayStr?: string
+): 'active' | 'due_soon' | 'expired' | 'renewed' | 'payment_pending' {
+  if (!currentExpiryDateStr) return 'active';
+
+  const today = todayStr || formatDateRecISO(new Date());
+  const expiryParts = currentExpiryDateStr.split('T')[0].split('-').map(Number);
+  const todayParts = today.split('T')[0].split('-').map(Number);
+
+  const expiry = new Date(expiryParts[0], expiryParts[1] - 1, expiryParts[2]);
+  const current = new Date(todayParts[0], todayParts[1] - 1, todayParts[2]);
+
+  const diffTime = expiry.getTime() - current.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return 'expired';
+  }
+  if (paymentStatus === 'pending' || paymentStatus === 'partially_paid') {
+    return 'payment_pending';
+  }
+  if (diffDays <= 7) {
+    return 'due_soon';
+  }
+  return 'active';
+}
+
+export function normalizeRecurringInvoice(rec: any): { rec: any; hasChanged: boolean } {
+  if (!rec) return { rec, hasChanged: false };
+  let hasChanged = false;
+
+  if (!rec.serviceName) {
+    rec.serviceName = rec.title || 'Monthly AMC';
+    hasChanged = true;
+  }
+
+  if (rec.monthlyRenewalAmount === undefined) {
+    rec.monthlyRenewalAmount = Number(
+      rec.invoiceTemplateData?.grandTotal ||
+      (Array.isArray(rec.items) && rec.items.length > 0 ? rec.items[0].rate : 0) ||
+      3000
+    );
+    hasChanged = true;
+  }
+
+  const startDate = rec.startDate || formatDateRecISO(new Date());
+  if (!rec.startDate) {
+    rec.startDate = startDate;
+    hasChanged = true;
+  }
+
+  const calculatedDates = calculateMonthlyPeriodDates(startDate);
+
+  if (!rec.currentExpiryDate) {
+    rec.currentExpiryDate = calculatedDates.currentExpiryDate;
+    hasChanged = true;
+  }
+
+  if (!rec.nextRenewalDate) {
+    rec.nextRenewalDate = calculatedDates.nextRenewalDate;
+    hasChanged = true;
+  }
+
+  if (!rec.paymentStatus) {
+    rec.paymentStatus = 'paid';
+    hasChanged = true;
+  }
+
+  if (rec.lastPaymentAmount === undefined) {
+    rec.lastPaymentAmount = rec.monthlyRenewalAmount;
+    hasChanged = true;
+  }
+
+  if (!rec.lastPaymentDate) {
+    rec.lastPaymentDate = rec.startDate;
+    hasChanged = true;
+  }
+
+  // Renewal history initialization if empty
+  if (!Array.isArray(rec.renewalHistory) || rec.renewalHistory.length === 0) {
+    rec.renewalHistory = [
+      {
+        id: `ren_init_${rec.id}`,
+        recurringInvoiceId: rec.id,
+        periodName: calculatedDates.periodName,
+        periodStartDate: calculatedDates.periodStartDate,
+        periodEndDate: rec.currentExpiryDate || calculatedDates.currentExpiryDate,
+        renewalAmount: rec.monthlyRenewalAmount,
+        paidAmount: rec.paymentStatus === 'paid' ? rec.monthlyRenewalAmount : (rec.lastPaymentAmount || 0),
+        paymentStatus: rec.paymentStatus || 'paid',
+        paymentDate: rec.lastPaymentDate || rec.startDate,
+        paymentMethod: 'UPI',
+        referenceId: 'INITIAL-SETUP',
+        notes: 'Initial recurring subscription period',
+        createdAt: rec.createdAt || new Date().toISOString()
+      }
+    ];
+    hasChanged = true;
+  }
+
+  // Renewal payments initialization if empty
+  if (!Array.isArray(rec.renewalPayments)) {
+    rec.renewalPayments = [];
+    if (rec.paymentStatus === 'paid') {
+      rec.renewalPayments.push({
+        id: `pay_ren_${rec.id}_init`,
+        clientId: rec.clientId,
+        clientName: rec.clientName || rec.client?.name || 'Client',
+        serviceName: rec.serviceName,
+        recurringInvoiceId: rec.id,
+        recurringNumber: rec.recurringNumber,
+        renewalPeriod: calculatedDates.periodName,
+        renewalAmount: rec.monthlyRenewalAmount,
+        amount: rec.monthlyRenewalAmount,
+        paymentDate: rec.lastPaymentDate || rec.startDate,
+        paymentType: 'Renewal Payment',
+        paymentMethod: 'UPI',
+        transactionId: 'INITIAL-SETUP',
+        referenceId: 'INITIAL-SETUP',
+        notes: 'Initial monthly subscription payment',
+        paymentStatus: 'paid',
+        createdAt: rec.createdAt || new Date().toISOString()
+      });
+    }
+    hasChanged = true;
+  }
+
+  // Clean any undefined properties from existing renewalHistory
+  if (Array.isArray(rec.renewalHistory)) {
+    rec.renewalHistory = rec.renewalHistory.map((item: any) => {
+      const clean: any = {};
+      for (const [k, v] of Object.entries(item || {})) {
+        if (v !== undefined) {
+          clean[k] = v;
+        }
+      }
+      return clean;
+    });
+  }
+
+  // Clean any undefined properties from existing renewalPayments
+  if (Array.isArray(rec.renewalPayments)) {
+    rec.renewalPayments = rec.renewalPayments.map((item: any) => {
+      const clean: any = {};
+      for (const [k, v] of Object.entries(item || {})) {
+        if (v !== undefined) {
+          clean[k] = v;
+        }
+      }
+      return clean;
+    });
+  }
+
+  // Determine renewal status automatically
+  const computedStatus = determineRenewalStatusBackend(rec.currentExpiryDate, rec.paymentStatus);
+  if (rec.renewalStatus !== computedStatus) {
+    rec.renewalStatus = computedStatus;
+    hasChanged = true;
+  }
+
+  return { rec, hasChanged };
+}
+
 app.get('/api/recurring-invoices', async (req, res) => {
   try {
     const result = await listDocs('recurringInvoices', { pageSize: 500, orderByField: 'createdAt', orderDirection: 'desc' });
-    res.json({ success: true, data: result.docs });
+    const normalizedDocs: any[] = [];
+    for (const raw of result.docs) {
+      const { rec, hasChanged } = normalizeRecurringInvoice(raw);
+      if (hasChanged) {
+        setDoc('recurringInvoices', rec.id, rec, true).catch(() => {});
+      }
+      normalizedDocs.push(rec);
+    }
+    res.json({ success: true, data: normalizedDocs });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1612,81 +2375,143 @@ app.post('/api/recurring-invoices', async (req, res) => {
     // 1. Frequency normalization
     if (typeof body.frequency === 'string') {
       body.frequency = body.frequency.toLowerCase().trim();
+    } else {
+      body.frequency = 'monthly';
     }
 
-    // 2. Line Items normalization & fallback:
-    // If items array is not provided or empty, synthesize from invoiceTemplateData.items or cycleRate/rate
+    const serviceName = (body.serviceName || body.title || 'Monthly AMC').trim();
+    const monthlyRenewalAmount = Number(body.monthlyRenewalAmount || body.rate || body.cycleRate || body.amount || 3000);
+    const startDate = (body.startDate && typeof body.startDate === 'string' && body.startDate.trim())
+      ? body.startDate.trim()
+      : formatDateRecISO(new Date());
+
+    const periodDates = calculateMonthlyPeriodDates(startDate);
+    const currentExpiryDate = body.currentExpiryDate || periodDates.currentExpiryDate;
+    const nextRenewalDate = body.nextRenewalDate || periodDates.nextRenewalDate;
+
+    // Line items normalization & fallback
     if (!Array.isArray(body.items) || body.items.length === 0) {
-      if (Array.isArray(body.invoiceTemplateData?.items) && body.invoiceTemplateData.items.length > 0) {
-        body.items = body.invoiceTemplateData.items;
-      } else if (body.rate !== undefined || body.cycleRate !== undefined || body.amount !== undefined) {
-        const flatRate = Number(body.rate || body.cycleRate || body.amount) || 0;
-        const gstRate = Number(body.gstRate !== undefined ? body.gstRate : 18);
-        body.items = [
-          {
-            id: `rec_item_${Date.now()}`,
-            name: body.title || 'Recurring AMC & Retainer Service',
-            description: body.description || 'Automated recurring retainer service',
-            hsnSac: body.hsnSac || '9983',
-            quantity: 1,
-            unit: body.unit || 'MONTH',
-            rate: flatRate,
-            gstRate: gstRate,
-            discountType: 'percentage',
-            discountValue: 0,
-            discountAmount: 0
-          }
-        ];
-      }
-    }
-
-    // Normalize each item to ensure types conform to LineItemSchema
-    if (Array.isArray(body.items)) {
+      body.items = [
+        {
+          id: `rec_item_${Date.now()}`,
+          name: serviceName,
+          description: body.description || 'Monthly recurring AMC & retainer service',
+          hsnSac: body.hsnSac || '998313',
+          quantity: 1,
+          unit: 'MONTH',
+          rate: monthlyRenewalAmount,
+          gstRate: body.gstRate !== undefined ? Number(body.gstRate) : 0,
+          discountType: 'percentage',
+          discountValue: 0,
+          discountAmount: 0
+        }
+      ];
+    } else {
       body.items = body.items.map((item: any, idx: number) => ({
         id: item.id || `item_${Date.now()}_${idx}`,
-        name: String(item.name || body.title || 'Recurring Service Item').trim(),
+        name: String(item.name || serviceName).trim(),
         description: String(item.description || '').trim(),
-        hsnSac: String(item.hsnSac || '9983').trim(),
+        hsnSac: String(item.hsnSac || '998313').trim(),
         quantity: Number(item.quantity) > 0 ? Number(item.quantity) : 1,
         unit: String(item.unit || 'MONTH').trim(),
-        rate: Number(item.rate) >= 0 ? Number(item.rate) : 0,
+        rate: Number(item.rate) >= 0 ? Number(item.rate) : monthlyRenewalAmount,
         discountType: item.discountType === 'fixed' ? 'fixed' : 'percentage',
         discountValue: Number(item.discountValue) || 0,
         discountAmount: Number(item.discountAmount) || 0,
-        gstRate: Number(item.gstRate !== undefined ? item.gstRate : 18)
+        gstRate: Number(item.gstRate !== undefined ? item.gstRate : 0)
       }));
     }
 
-    const parseResult = RecurringInvoiceSchema.safeParse(body);
-    if (!parseResult.success) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid recurring invoice data',
-        errors: parseResult.error.issues
-      });
-    }
-
-    const client = (await getDoc('clients', parseResult.data.clientId)) || parseResult.data.client || {};
+    const client = (await getDoc('clients', body.clientId)) || body.client || {};
     const businessProfile = (await getDoc('settings', 'businessProfile')) || {};
     const sellerStateCode = businessProfile.stateCode || '23';
     const clientStateCode = client.stateCode || '23';
     const isInterState = sellerStateCode !== clientStateCode;
 
     // Calculate canonical GST totals for the recurring profile
-    const totals = calculateInvoiceTotals(parseResult.data.items as any, { isInterState }, 'draft');
+    const totals = calculateInvoiceTotals(body.items as any, { isInterState }, 'draft');
 
     const count = await countDocs('recurringInvoices');
     const newId = `rec_${Date.now()}`;
+    const newRecNumber = body.recurringNumber || `REC-00${count + 1}`;
+
+    const isPaidInitial = body.isInitialPaymentPaid !== false;
+    const initialPaymentAmount = isPaidInitial ? Number(body.initialPaymentAmount || monthlyRenewalAmount) : 0;
+    const initialPaymentDate = body.initialPaymentDate || startDate;
+    const initialPaymentMethod = body.initialPaymentMethod || 'UPI';
+    const initialPaymentReference = body.initialPaymentReference || `AMC-${Date.now().toString(36).toUpperCase()}`;
+    const paymentStatus = isPaidInitial ? 'paid' : 'pending';
+    const renewalStatus = determineRenewalStatusBackend(currentExpiryDate, paymentStatus);
+
+    const initialHistory = [
+      {
+        id: `ren_init_${newId}`,
+        recurringInvoiceId: newId,
+        periodName: periodDates.periodName,
+        periodStartDate: periodDates.periodStartDate,
+        periodEndDate: currentExpiryDate,
+        renewalAmount: monthlyRenewalAmount,
+        paidAmount: initialPaymentAmount,
+        paymentStatus,
+        paymentDate: initialPaymentDate,
+        paymentMethod: initialPaymentMethod,
+        referenceId: initialPaymentReference,
+        notes: body.initialPaymentNotes || 'Initial subscription activation',
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    const initialRenewalPayments = [];
+    if (isPaidInitial && initialPaymentAmount > 0) {
+      initialRenewalPayments.push({
+        id: `pay_ren_${Date.now()}_init`,
+        clientId: client.id || body.clientId,
+        clientName: client.name || body.clientName || 'Client',
+        serviceName,
+        recurringInvoiceId: newId,
+        recurringNumber: newRecNumber,
+        renewalPeriod: periodDates.periodName,
+        renewalAmount: monthlyRenewalAmount,
+        amount: initialPaymentAmount,
+        paymentDate: initialPaymentDate,
+        paymentType: 'Renewal Payment',
+        paymentMethod: initialPaymentMethod,
+        transactionId: initialPaymentReference,
+        referenceId: initialPaymentReference,
+        notes: body.initialPaymentNotes || 'Initial subscription activation payment',
+        paymentStatus: 'paid',
+        createdAt: new Date().toISOString()
+      });
+    }
+
     const newRec = {
       id: newId,
-      recurringNumber: req.body.recurringNumber || `REC-00${count + 1}`,
+      recurringNumber: newRecNumber,
+      title: body.title || serviceName,
+      serviceName,
+      monthlyRenewalAmount,
+      clientId: client.id || body.clientId,
+      clientName: client.name || body.clientName || 'Client',
+      client: client.name ? client : undefined,
+      frequency: body.frequency,
+      startDate,
+      currentExpiryDate,
+      nextRenewalDate,
+      lastPaymentDate: isPaidInitial ? initialPaymentDate : undefined,
+      lastPaymentAmount: isPaidInitial ? initialPaymentAmount : 0,
+      paymentStatus,
+      renewalStatus,
+      renewalHistory: initialHistory,
+      renewalPayments: initialRenewalPayments,
+      nextInvoiceDate: nextRenewalDate,
+      status: body.status || 'active',
+      items: body.items,
+      terms: body.terms || 'Standard AMC & Retainer SLA agreement applies.',
+      autoSendEmail: Boolean(body.autoSendEmail),
       createdAt: new Date().toISOString(),
-      ...parseResult.data,
-      client: client.name ? client : parseResult.data.client,
-      clientName: client.name || parseResult.data.clientName || 'Client',
-      nextInvoiceDate: parseResult.data.nextInvoiceDate || parseResult.data.startDate,
+      updatedAt: new Date().toISOString(),
       invoiceTemplateData: {
-        ...(parseResult.data.invoiceTemplateData || {}),
+        ...(body.invoiceTemplateData || {}),
         subtotal: totals.subtotal,
         totalTaxableAmount: totals.totalTaxableAmount,
         totalCgst: totals.totalCgst,
@@ -1702,6 +2527,244 @@ app.post('/api/recurring-invoices', async (req, res) => {
     await addAuditLog('Recurring Schedule Created', 'invoice', newRec.id, newRec.recurringNumber);
 
     res.status(201).json({ success: true, data: newRec });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Record Renewal Payment
+app.post('/api/recurring-invoices/:id/renew', async (req, res) => {
+  try {
+    const rawRec = await getDoc('recurringInvoices', req.params.id);
+    if (!rawRec) {
+      return res.status(404).json({ success: false, message: 'Recurring schedule not found' });
+    }
+    const { rec } = normalizeRecurringInvoice(rawRec);
+
+    const {
+      renewalPeriod,
+      periodStartDate,
+      periodEndDate,
+      renewalAmount,
+      paymentAmount,
+      paymentDate,
+      paymentMethod,
+      referenceId,
+      notes,
+      paymentStatus,
+      recordPayment,
+      nextRenewalDate: explicitNextRenewalDate
+    } = req.body;
+
+    const renAmount = Number(renewalAmount !== undefined ? renewalAmount : (rec.monthlyRenewalAmount || 3000));
+    const payAmount = Number(paymentAmount !== undefined ? paymentAmount : renAmount);
+    const pDate = paymentDate || formatDateRecISO(new Date());
+    const pMethod = paymentMethod || 'UPI';
+    const refId = referenceId ? String(referenceId).trim() : `REN-${Date.now().toString(36).toUpperCase()}`;
+
+    // Should we record a payment transaction?
+    // If recordPayment is explicitly false, or paymentStatus is pending, or payAmount is 0, do not create a payment record
+    const shouldRecordPayment = recordPayment !== false && paymentStatus !== 'pending' && payAmount > 0;
+    const pStatus = paymentStatus || (shouldRecordPayment ? (payAmount >= renAmount ? 'paid' : 'partially_paid') : 'pending');
+
+    // Calculate dates for next cycle if not explicitly passed
+    let pStart = periodStartDate;
+    let pEnd = periodEndDate;
+    if (!pStart || !pEnd) {
+      const nextStartBase = rec.nextRenewalDate || rec.currentExpiryDate;
+      const nextDates = calculateMonthlyPeriodDates(nextStartBase);
+      pStart = pStart || nextDates.periodStartDate;
+      pEnd = pEnd || nextDates.currentExpiryDate;
+    }
+
+    // Next renewal date following this period (the day after pEnd)
+    let nextRenewalDate = explicitNextRenewalDate;
+    if (!nextRenewalDate) {
+      const nextParts = pEnd.split('T')[0].split('-').map(Number);
+      const nextFollowDate = new Date(nextParts[0], nextParts[1] - 1, nextParts[2]);
+      nextFollowDate.setDate(nextFollowDate.getDate() + 1);
+      nextRenewalDate = formatDateRecISO(nextFollowDate);
+    }
+
+    const periodLabel = renewalPeriod || calculateMonthlyPeriodDates(pStart).periodName;
+
+    // 1. Create separate Renewal Payment record if payment was made
+    let renewalPayment: any = null;
+    rec.renewalPayments = Array.isArray(rec.renewalPayments) ? rec.renewalPayments : [];
+
+    if (shouldRecordPayment) {
+      // Prevent duplicate payment if identical referenceId already exists
+      const isDuplicateRef = refId && rec.renewalPayments.some(
+        (p: any) => p.referenceId === refId && p.amount === payAmount && p.renewalPeriod === periodLabel
+      );
+
+      if (!isDuplicateRef) {
+        renewalPayment = {
+          id: `pay_ren_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          clientId: rec.clientId,
+          clientName: rec.clientName || rec.client?.name || 'Client',
+          serviceName: rec.serviceName || rec.title || 'Monthly AMC',
+          recurringInvoiceId: rec.id,
+          recurringNumber: rec.recurringNumber,
+          renewalPeriod: periodLabel,
+          renewalAmount: renAmount,
+          amount: payAmount,
+          paymentDate: pDate,
+          paymentType: 'Renewal Payment',
+          paymentMethod: pMethod,
+          transactionId: refId,
+          referenceId: refId,
+          notes: notes || '',
+          paymentStatus: pStatus,
+          createdAt: new Date().toISOString()
+        };
+        rec.renewalPayments.push(renewalPayment);
+      }
+    }
+
+    // 2. Add or update renewalHistory (Never overwrite previous historical cycles)
+    rec.renewalHistory = Array.isArray(rec.renewalHistory) ? rec.renewalHistory : [];
+    const existingIndex = rec.renewalHistory.findIndex((h: any) => h.periodName === periodLabel);
+
+    if (existingIndex >= 0) {
+      const existingItem = rec.renewalHistory[existingIndex];
+      const updatedHistoryItem: any = {
+        ...existingItem,
+        periodStartDate: pStart,
+        periodEndDate: pEnd,
+        renewalAmount: renAmount,
+        paidAmount: shouldRecordPayment ? payAmount : (existingItem.paidAmount || 0),
+        paymentStatus: pStatus,
+        notes: notes || existingItem.notes || '',
+        updatedAt: new Date().toISOString()
+      };
+      if (shouldRecordPayment) {
+        updatedHistoryItem.paymentDate = pDate;
+        updatedHistoryItem.paymentMethod = pMethod;
+        updatedHistoryItem.referenceId = refId;
+      } else if (existingItem.paymentDate) {
+        updatedHistoryItem.paymentDate = existingItem.paymentDate;
+        if (existingItem.paymentMethod) updatedHistoryItem.paymentMethod = existingItem.paymentMethod;
+        if (existingItem.referenceId) updatedHistoryItem.referenceId = existingItem.referenceId;
+      }
+      rec.renewalHistory[existingIndex] = updatedHistoryItem;
+    } else {
+      const newHistoryItem: any = {
+        id: `ren_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        recurringInvoiceId: rec.id,
+        periodName: periodLabel,
+        periodStartDate: pStart,
+        periodEndDate: pEnd,
+        renewalAmount: renAmount,
+        paidAmount: shouldRecordPayment ? payAmount : 0,
+        paymentStatus: pStatus,
+        notes: notes || '',
+        createdAt: new Date().toISOString()
+      };
+      if (shouldRecordPayment) {
+        newHistoryItem.paymentDate = pDate;
+        newHistoryItem.paymentMethod = pMethod;
+        newHistoryItem.referenceId = refId;
+      }
+      rec.renewalHistory.push(newHistoryItem);
+    }
+
+    // 3. Update the recurring client's expiry and next renewal dates
+    rec.currentExpiryDate = pEnd;
+    rec.nextRenewalDate = nextRenewalDate;
+    if (shouldRecordPayment) {
+      rec.lastPaymentDate = pDate;
+      rec.lastPaymentAmount = payAmount;
+    }
+    rec.paymentStatus = pStatus;
+    rec.renewalStatus = determineRenewalStatusBackend(rec.currentExpiryDate, pStatus);
+    rec.nextInvoiceDate = nextRenewalDate;
+    rec.updatedAt = new Date().toISOString();
+
+    await setDoc('recurringInvoices', rec.id, rec, true);
+
+    await addAuditLog(
+      shouldRecordPayment ? 'Renewal Payment Recorded' : 'Renewal Expiry Updated',
+      'payment',
+      rec.id,
+      `${rec.clientName} - ${periodLabel} ${shouldRecordPayment ? `(₹${payAmount})` : '(Expiry Extended)'}`,
+      'UDM Admin',
+      JSON.stringify({
+        clientId: rec.clientId,
+        serviceName: rec.serviceName,
+        renewalPeriod: periodLabel,
+        amount: shouldRecordPayment ? payAmount : 0,
+        paymentType: 'Renewal Payment',
+        newExpiryDate: pEnd,
+        paymentStatus: pStatus
+      })
+    );
+
+    res.json({
+      success: true,
+      data: rec,
+      payment: renewalPayment,
+      message: shouldRecordPayment
+        ? `Renewal payment of ₹${payAmount} recorded successfully for ${periodLabel}`
+        : `Renewal expiry updated to ${pEnd} for ${periodLabel}`
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Add a renewal period to history (e.g. pending renewal period)
+app.post('/api/recurring-invoices/:id/periods', async (req, res) => {
+  try {
+    const rawRec = await getDoc('recurringInvoices', req.params.id);
+    if (!rawRec) {
+      return res.status(404).json({ success: false, message: 'Recurring schedule not found' });
+    }
+    const { rec } = normalizeRecurringInvoice(rawRec);
+
+    const { periodName, periodStartDate, periodEndDate, renewalAmount, notes } = req.body;
+    rec.renewalHistory = Array.isArray(rec.renewalHistory) ? rec.renewalHistory : [];
+
+    const newPeriod = {
+      id: `ren_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      recurringInvoiceId: rec.id,
+      periodName: periodName,
+      periodStartDate: periodStartDate,
+      periodEndDate: periodEndDate,
+      renewalAmount: Number(renewalAmount || rec.monthlyRenewalAmount || 3000),
+      paidAmount: 0,
+      paymentStatus: 'pending',
+      notes: notes || '',
+      createdAt: new Date().toISOString()
+    };
+
+    rec.renewalHistory.push(newPeriod);
+    rec.updatedAt = new Date().toISOString();
+    await setDoc('recurringInvoices', rec.id, rec, true);
+
+    res.json({ success: true, data: rec, newPeriod });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get Renewal History and Payments for a recurring schedule
+app.get('/api/recurring-invoices/:id/renewals', async (req, res) => {
+  try {
+    const rawRec = await getDoc('recurringInvoices', req.params.id);
+    if (!rawRec) {
+      return res.status(404).json({ success: false, message: 'Recurring schedule not found' });
+    }
+    const { rec, hasChanged } = normalizeRecurringInvoice(rawRec);
+    if (hasChanged) {
+      await setDoc('recurringInvoices', rec.id, rec, true);
+    }
+    res.json({
+      success: true,
+      renewalHistory: rec.renewalHistory || [],
+      renewalPayments: rec.renewalPayments || [],
+      recurring: rec
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -2327,7 +3390,7 @@ app.post('/api/onboardings/:id/record-payment', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Onboarding record not found' });
     }
 
-    const { amount, paymentMethod, type, notes, date } = req.body;
+    const { amount, paymentMethod, type, notes, date, transactionId } = req.body;
     const payAmount = Number(amount) || 0;
     if (payAmount <= 0) {
       return res.status(400).json({ success: false, message: 'Invalid payment amount' });
@@ -2337,8 +3400,9 @@ app.post('/api/onboardings/:id/record-payment', async (req, res) => {
       id: `pay_${Date.now()}`,
       date: date || new Date().toISOString().split('T')[0],
       amount: payAmount,
-      type: type || 'balance',
+      type: type || 'Partial Payment',
       paymentMethod: paymentMethod || 'UPI',
+      transactionId: transactionId || '',
       notes: notes || 'Payment received'
     };
 
@@ -2357,7 +3421,45 @@ app.post('/api/onboardings/:id/record-payment', async (req, res) => {
 
     item.updatedAt = new Date().toISOString();
     await setDoc('onboardings', item.id, item, true);
-    await addAuditLog('Payment Recorded for Onboarded Client', 'onboarding', item.id, `₹${payAmount} received for ${item.businessName}`);
+
+    // Sync to linked invoice if exists
+    if (item.invoiceId) {
+      try {
+        const inv = await getDoc('invoices', item.invoiceId);
+        if (inv) {
+          const invPayment = {
+            id: newPayment.id,
+            invoiceId: inv.id,
+            invoiceNumber: inv.invoiceNumber,
+            clientId: item.clientId || inv.clientId || '',
+            clientName: item.businessName || item.customerName || inv.client?.name || 'Client',
+            serviceName: item.servicePackage || 'Services',
+            dealId: item.id,
+            dealTitle: item.businessName || item.customerName,
+            amount: payAmount,
+            paymentDate: newPayment.date,
+            paymentType: type || (item.remainingBalance <= 0.01 ? 'Balance Payment' : 'Partial Payment'),
+            paymentMethod: paymentMethod || 'UPI',
+            transactionId: transactionId || '',
+            notes: notes || 'Payment received via Client Deals & Sales',
+            remainingBalance: Math.max(0, (Number(inv.grandTotal) || 0) - (Number(inv.amountPaid || 0) + payAmount)),
+            createdAt: new Date().toISOString()
+          };
+          inv.payments = Array.isArray(inv.payments) ? inv.payments : [];
+          inv.payments.push(invPayment);
+          inv.amountPaid = round2(inv.payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0));
+          inv.balanceDue = round2(Math.max(0, (Number(inv.grandTotal) || 0) - inv.amountPaid));
+          if (inv.balanceDue <= 0.01 && Number(inv.grandTotal) > 0) inv.status = 'paid';
+          else if (inv.amountPaid > 0) inv.status = 'partially_paid';
+          inv.updatedAt = new Date().toISOString();
+          await setDoc('invoices', inv.id, inv, true);
+        }
+      } catch (e) {
+        console.warn('Failed to sync onboarding payment to invoice:', e);
+      }
+    }
+
+    await addAuditLog('Payment Recorded for Onboarded Client', 'onboarding', item.id, `₹${payAmount} (${newPayment.type}) received for ${item.businessName}`);
 
     res.json({ success: true, data: processOnboardingRecord(item) });
   } catch (err: any) {

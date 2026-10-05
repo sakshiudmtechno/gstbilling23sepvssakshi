@@ -44,10 +44,32 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
 
   const advancePaid = Number(invoice.advanceAmount) || 0;
   const totalAmountPaid = Number(invoice.amountPaid) || advancePaid;
-  const grandTotal = invoice.grandTotal !== undefined && invoice.grandTotal !== null
-    ? invoice.grandTotal
-    : ((invoice.totalTaxableAmount || 0) + (invoice.totalGst || 0));
-  const currentBalance = invoice.balanceDue !== undefined ? invoice.balanceDue : Math.max(0, grandTotal - totalAmountPaid);
+  const totalItemDiscount = (invoice.totalItemDiscount !== undefined && invoice.totalItemDiscount !== null && !isNaN(Number(invoice.totalItemDiscount)))
+    ? Number(invoice.totalItemDiscount)
+    : (invoice.items || []).reduce((sum, item) => sum + (Number(item.discountAmount) || 0), 0);
+  const totalGlobalDiscount = Number(invoice.discountAmount) || 0;
+  const totalDiscount = totalItemDiscount + totalGlobalDiscount;
+
+  const computedSubtotal = (invoice.subtotal !== undefined && invoice.subtotal !== null && !isNaN(Number(invoice.subtotal)))
+    ? Number(invoice.subtotal)
+    : (invoice.items || []).reduce((sum, it) => sum + (Number(it.rate || 0) * Number(it.quantity || 1)), 0);
+
+  const computedTaxable = (invoice.totalTaxableAmount !== undefined && invoice.totalTaxableAmount !== null && !isNaN(Number(invoice.totalTaxableAmount)))
+    ? Number(invoice.totalTaxableAmount)
+    : Math.max(0, computedSubtotal - totalDiscount);
+
+  const computedGst = (invoice.totalGst !== undefined && invoice.totalGst !== null && !isNaN(Number(invoice.totalGst)))
+    ? Number(invoice.totalGst)
+    : (invoice.items || []).reduce((sum, it) => sum + (Number(it.totalGstAmount) || 0), 0);
+
+  const rawGrandTotal = (invoice.grandTotal !== undefined && invoice.grandTotal !== null) ? Number(invoice.grandTotal) : NaN;
+  const grandTotal = (!isNaN(rawGrandTotal) && rawGrandTotal >= 0)
+    ? rawGrandTotal
+    : Math.round(computedTaxable + computedGst + (Number(invoice.roundOff) || 0) + (invoice.additionalCharges || []).reduce((sum, c) => sum + (Number(c.amount) || 0), 0));
+
+  const currentBalance = (invoice.balanceDue !== undefined && invoice.balanceDue !== null && !isNaN(Number(invoice.balanceDue)))
+    ? Number(invoice.balanceDue)
+    : Math.max(0, grandTotal - totalAmountPaid);
 
   // Generate UPI payment deep link with current balance or grand total
   const upiAmount = currentBalance > 0 ? currentBalance : grandTotal;
@@ -160,13 +182,15 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
                   <div className="flex justify-between">
                     <span className="font-bold text-slate-900">{seller.businessName || 'UDM Techno Solutions'}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold text-slate-600">Contact Support:</span>
-                    <span className="font-medium text-slate-900">{seller.phone || '+91 91091 24357'}</span>
-                  </div>
+                  {(seller.phone || businessProfileFallback?.phone) && (
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-slate-600">Contact Support:</span>
+                      <span className="font-medium text-slate-900">{seller.phone || businessProfileFallback?.phone}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-600">Tax Type:</span>
-                    <span className="font-bold text-indigo-900">{isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}</span>
+                    <span className="font-bold text-indigo-900">{invoice.totalGst > 0 ? 'GST Tax Invoice' : 'Non-GST Invoice'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-600">Place of Supply:</span>
@@ -186,30 +210,15 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
             <table className="w-full text-[10.5px] text-left table-fixed">
               <colgroup>
                 {!isQuote ? (
-                  isInterState ? (
-                    <>
-                      <col style={{ width: '4%' }} />
-                      <col style={{ width: '32%' }} />
-                      <col style={{ width: '11%' }} />
-                      <col style={{ width: '8%' }} />
-                      <col style={{ width: '12%' }} />
-                      <col style={{ width: '7%' }} />
-                      <col style={{ width: '12%' }} />
-                      <col style={{ width: '14%' }} />
-                    </>
-                  ) : (
-                    <>
-                      <col style={{ width: '4%' }} />
-                      <col style={{ width: '26%' }} />
-                      <col style={{ width: '10%' }} />
-                      <col style={{ width: '7%' }} />
-                      <col style={{ width: '11%' }} />
-                      <col style={{ width: '6%' }} />
-                      <col style={{ width: '10%' }} />
-                      <col style={{ width: '10%' }} />
-                      <col style={{ width: '16%' }} />
-                    </>
-                  )
+                  <>
+                    <col style={{ width: '4%' }} />
+                    <col style={{ width: '38%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '8%' }} />
+                    <col style={{ width: '13%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '14%' }} />
+                  </>
                 ) : (
                   <>
                     <col style={{ width: '5%' }} />
@@ -225,15 +234,7 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
                   {!isQuote && <th className="px-1 py-1.5 text-right border-r border-indigo-800">Rate (&#8377;)</th>}
                   {!isQuote && <th className="px-1 py-1.5 text-right border-r border-indigo-800">Disc</th>}
                   {!isQuote && <th className="px-1 py-1.5 text-right border-r border-indigo-800">Taxable (&#8377;)</th>}
-                  {!isQuote && <th className="px-1 py-1.5 text-center border-r border-indigo-800">GST</th>}
-                  {!isQuote && (isInterState ? (
-                    <th className="px-1 py-1.5 text-right border-r border-indigo-800">IGST (&#8377;)</th>
-                  ) : (
-                    <>
-                      <th className="px-1 py-1.5 text-right border-r border-indigo-800">CGST</th>
-                      <th className="px-1 py-1.5 text-right border-r border-indigo-800">SGST</th>
-                    </>
-                  ))}
+                  {!isQuote && <th className="px-1 py-1.5 text-right border-r border-indigo-800">GST (&#8377;)</th>}
                   <th className="px-1.5 py-1.5 text-right">{isQuote ? 'Amount (&#8377;)' : 'Total (&#8377;)'}</th>
                 </tr>
               </thead>
@@ -246,33 +247,69 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
                       {item.description && <p className="text-[9.5px] text-slate-500 whitespace-pre-line mt-0.5 leading-relaxed break-words">{item.description}</p>}
                     </td>
                     {!isQuote && <td className="px-1 py-1.5 text-right text-slate-700 border-r border-slate-200 font-mono">{formatINR(item.rate, false)}</td>}
-                    {!isQuote && <td className="px-1 py-1.5 text-right text-slate-500 border-r border-slate-200 font-mono">
-                      {item.discountAmount > 0 ? formatINR(item.discountAmount, false) : '-'}
-                    </td>}
+                    {!isQuote && (
+                      <td className="px-1 py-1.5 text-right text-slate-500 border-r border-slate-200 font-mono">
+                        {item.discountAmount > 0 ? (
+                          <span>
+                            {formatINR(item.discountAmount, false)}
+                            {item.discountType === 'percentage' && item.discountValue ? (
+                              <span className="text-[8.5px] text-slate-400 block font-sans">({item.discountValue}%)</span>
+                            ) : null}
+                          </span>
+                        ) : '-'}
+                      </td>
+                    )}
                     {!isQuote && <td className="px-1 py-1.5 text-right font-semibold text-slate-800 border-r border-slate-200 font-mono">
                       {formatINR(item.taxableAmount, false)}
                     </td>}
-                    {!isQuote && <td className="px-1 py-1.5 text-center text-slate-600 border-r border-slate-200">{item.gstRate}%</td>}
-                    {!isQuote && (isInterState ? (
-                      <td className="px-1 py-1.5 text-right text-slate-600 border-r border-slate-200 font-mono">
-                        {formatINR(item.igstAmount || item.totalGstAmount, false)}
+                    {!isQuote && (
+                      <td className="px-1 py-1.5 text-right text-slate-700 border-r border-slate-200 font-mono">
+                        {item.totalGstAmount > 0 ? (
+                          <span>
+                            {formatINR(item.totalGstAmount, false)}
+                            <span className="text-[8.5px] text-slate-400 block font-sans">({item.gstRate}%)</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">0%</span>
+                        )}
                       </td>
-                    ) : (
-                      <>
-                        <td className="px-1 py-1.5 text-right text-slate-600 border-r border-slate-200 font-mono">
-                          {formatINR(item.cgstAmount || item.totalGstAmount / 2, false)}
-                        </td>
-                        <td className="px-1 py-1.5 text-right text-slate-600 border-r border-slate-200 font-mono">
-                          {formatINR(item.sgstAmount || item.totalGstAmount / 2, false)}
-                        </td>
-                      </>
-                    ))}
+                    )}
                     <td className="px-1.5 py-1.5 text-right font-bold text-indigo-950 font-mono text-[11px]">
                       {formatINR(isQuote ? (item.rate * item.quantity - (item.discountAmount || 0)) : item.total, false)}
                     </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-900 text-[10px]">
+                <tr>
+                  <td colSpan={2} className="px-1.5 py-1 text-right uppercase tracking-wider font-extrabold border-r border-slate-300">
+                    Grand Total
+                  </td>
+                  {!isQuote && (
+                    <td className="px-1 py-1 text-right font-mono border-r border-slate-300">
+                      {formatINR(computedSubtotal, false)}
+                    </td>
+                  )}
+                  {!isQuote && (
+                    <td className="px-1 py-1 text-right font-mono text-emerald-800 border-r border-slate-300">
+                      {totalDiscount > 0 ? `-${formatINR(totalDiscount, false)}` : '-'}
+                    </td>
+                  )}
+                  {!isQuote && (
+                    <td className="px-1 py-1 text-right font-mono border-r border-slate-300 font-extrabold text-slate-950">
+                      {formatINR(computedTaxable, false)}
+                    </td>
+                  )}
+                  {!isQuote && (
+                    <td className="px-1 py-1 text-right font-mono border-r border-slate-300 font-extrabold text-slate-950">
+                      {formatINR(computedGst, false)}
+                    </td>
+                  )}
+                  <td className="px-1.5 py-1 text-right font-mono font-black text-indigo-950 text-[11.5px] bg-indigo-50 border-slate-300">
+                    {formatINR(grandTotal, true)}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
 
@@ -322,44 +359,34 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
 
             {/* Right: Totals Breakdown */}
             <div className="border border-slate-300 rounded-sm overflow-hidden">
-              <div className="bg-slate-100 px-2 py-[3px] border-b border-slate-300">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-indigo-900">Totals</span>
+              <div className="bg-slate-100 px-2 py-[3px] border-b border-slate-300 flex justify-between items-center">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-indigo-900">Invoice Summary</span>
+                <span className="text-[9.5px] font-bold font-mono text-indigo-950">Grand Total: {formatINR(grandTotal)}</span>
               </div>
               <div className="p-2 space-y-[2px] text-[10.5px]">
                 <div className="flex justify-between text-slate-700">
                   <span>Subtotal:</span>
-                  <span className="font-mono font-medium">{formatINR(invoice.subtotal)}</span>
+                  <span className="font-mono font-medium">{formatINR(computedSubtotal)}</span>
                 </div>
 
-                {invoice.discountAmount > 0 && (
-                  <div className="flex justify-between text-emerald-700">
+                {totalDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-semibold">
                     <span>Discount:</span>
-                    <span className="font-mono">- {formatINR(invoice.discountAmount)}</span>
+                    <span className="font-mono">- {formatINR(totalDiscount)}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between font-bold text-slate-800 border-t border-slate-200 pt-[2px]">
                   <span>Taxable Amount:</span>
-                  <span className="font-mono">{formatINR(invoice.totalTaxableAmount)}</span>
+                  <span className="font-mono">{formatINR(computedTaxable)}</span>
                 </div>
 
-                {invoice.totalGst > 0 && (isInterState ? (
-                  <div className="flex justify-between text-indigo-900 font-semibold">
-                    <span>IGST {invoice.items?.[0]?.gstRate ? `(${invoice.items[0].gstRate}%)` : ''}:</span>
-                    <span className="font-mono">{formatINR(invoice.totalIgst || invoice.totalGst)}</span>
+                {computedGst > 0 && (
+                  <div className="flex justify-between text-slate-700 font-semibold">
+                    <span>GST {invoice.items?.[0]?.gstRate ? `(${invoice.items[0].gstRate}%)` : ''}:</span>
+                    <span className="font-mono">+{formatINR(computedGst)}</span>
                   </div>
-                ) : (
-                  <>
-                    <div className="flex justify-between text-slate-700">
-                      <span>CGST {invoice.items?.[0]?.gstRate ? `(${invoice.items[0].gstRate / 2}%)` : ''}:</span>
-                      <span className="font-mono">{formatINR(invoice.totalCgst || invoice.totalGst / 2)}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-700">
-                      <span>SGST {invoice.items?.[0]?.gstRate ? `(${invoice.items[0].gstRate / 2}%)` : ''}:</span>
-                      <span className="font-mono">{formatINR(invoice.totalSgst || invoice.totalGst / 2)}</span>
-                    </div>
-                  </>
-                ))}
+                )}
 
                 {invoice.additionalCharges && invoice.additionalCharges.length > 0 && (
                   <div className="pt-[2px] border-t border-slate-200 space-y-0 mt-[2px]">
@@ -372,16 +399,17 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
                   </div>
                 )}
 
-                {invoice.roundOff !== 0 && (
+                {invoice.roundOff !== 0 && invoice.roundOff !== undefined && (
                   <div className="flex justify-between text-slate-500 text-[9.5px]">
                     <span>Round Off:</span>
                     <span className="font-mono">{formatINR(invoice.roundOff)}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between font-bold text-indigo-950 border-t-2 border-indigo-900 pt-[2px] text-[11px]">
-                  <span>Total Amount:</span>
-                  <span className="font-mono text-[12px]">{formatINR(grandTotal)}</span>
+                {/* Prominent Grand Total Row */}
+                <div className="flex justify-between items-center font-extrabold text-indigo-950 bg-indigo-100/90 px-2.5 py-2 rounded-sm border-2 border-indigo-400 my-1 shadow-2xs">
+                  <span className="uppercase tracking-wider text-[11.5px] font-black text-indigo-950">Grand Total:</span>
+                  <span className="font-mono text-[14px] font-black text-indigo-950">{formatINR(grandTotal)}</span>
                 </div>
 
                 {advancePaid > 0 ? (
@@ -517,12 +545,13 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Billed by</span>
                 <p className="font-bold text-slate-900 text-sm">{seller.businessName}</p>
-                <p className="text-xs text-slate-600 mt-1">Contact Support: <strong>+91 91091 24357</strong></p>
-                {seller.phone && <p className="text-xs text-slate-600">Phone: <strong className="text-slate-900">{seller.phone}</strong></p>}
+                {(seller.phone || businessProfileFallback?.phone) && (
+                  <p className="text-xs text-slate-600 mt-1">Contact Support: <strong>{seller.phone || businessProfileFallback?.phone}</strong></p>
+                )}
                 <p className="text-xs text-slate-600 font-mono">GSTIN: <span className="font-bold text-indigo-600">{seller.gstin}</span></p>
               </div>
               <div className="mt-2 pt-2 border-t border-slate-200">
-                <span className="text-xs text-slate-600"><span className="font-semibold">Tax Type:</span> {isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}</span>
+                <span className="text-xs text-slate-600"><span className="font-semibold">Tax Type:</span> {invoice.totalGst > 0 ? 'GST Tax Invoice' : 'Non-GST'}</span>
               </div>
             </div>
           </div>
@@ -533,12 +562,12 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
               <thead className="bg-slate-100 text-slate-700 font-semibold uppercase text-[10px]">
                 <tr>
                   <th className="p-3 text-left">{isQuote ? 'Service Details' : 'Item Description'}</th>
-                  {!isQuote && <th className="p-3 text-right w-24">Rate</th>}
+                  {!isQuote && <th className="p-3 text-right w-20">Rate</th>}
                   {!isQuote && <th className="p-3 text-center w-12">Qty</th>}
-                  {!isQuote && <th className="p-3 text-right w-24">Taxable</th>}
-                  {!isQuote && <th className="p-3 text-center w-14">GST</th>}
-                  {!isQuote && <th className="p-3 text-right w-24">GST Amt</th>}
-                  <th className="p-3 text-right w-28">{isQuote ? 'Amount' : 'Total'}</th>
+                  {!isQuote && <th className="p-3 text-right w-16">Disc</th>}
+                  {!isQuote && <th className="p-3 text-right w-20">Taxable</th>}
+                  {!isQuote && <th className="p-3 text-right w-20">GST</th>}
+                  <th className="p-3 text-right w-24">{isQuote ? 'Amount' : 'Total'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -550,13 +579,40 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
                     </td>
                     {!isQuote && <td className="p-3 text-right font-mono text-slate-700">{formatINR(item.rate, false)}</td>}
                     {!isQuote && <td className="p-3 text-center font-medium text-slate-700">{item.quantity}</td>}
+                    {!isQuote && (
+                      <td className="p-3 text-right font-mono text-slate-500">
+                        {item.discountAmount > 0 ? (
+                          <span>
+                            {formatINR(item.discountAmount, false)}
+                            {item.discountType === 'percentage' && item.discountValue ? (
+                              <span className="text-[9.5px] text-slate-400 block font-sans">({item.discountValue}%)</span>
+                            ) : null}
+                          </span>
+                        ) : '-'}
+                      </td>
+                    )}
                     {!isQuote && <td className="p-3 text-right font-mono font-semibold text-slate-900">{formatINR(item.taxableAmount, false)}</td>}
-                    {!isQuote && <td className="p-3 text-center text-slate-600">{item.gstRate}%</td>}
-                    {!isQuote && <td className="p-3 text-right font-mono text-slate-700">{formatINR(item.totalGstAmount, false)}</td>}
+                    {!isQuote && (
+                      <td className="p-3 text-right font-mono text-slate-700">
+                        {formatINR(item.totalGstAmount, false)}
+                        <span className="text-[10px] text-slate-400 block">({item.gstRate}%)</span>
+                      </td>
+                    )}
                     <td className="p-3 text-right font-mono font-bold text-indigo-950">{formatINR(isQuote ? (item.rate * item.quantity - (item.discountAmount || 0)) : item.total, false)}</td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-200 text-slate-900 text-xs">
+                <tr>
+                  <td className="p-3 text-right uppercase tracking-wider font-extrabold">Grand Total</td>
+                  {!isQuote && <td className="p-3 text-right font-mono">{formatINR(computedSubtotal, false)}</td>}
+                  {!isQuote && <td className="p-3 text-center">-</td>}
+                  {!isQuote && <td className="p-3 text-right font-mono text-emerald-800">{totalDiscount > 0 ? `-${formatINR(totalDiscount, false)}` : '-'}</td>}
+                  {!isQuote && <td className="p-3 text-right font-mono font-extrabold">{formatINR(computedTaxable, false)}</td>}
+                  {!isQuote && <td className="p-3 text-right font-mono font-extrabold">{formatINR(computedGst, false)}</td>}
+                  <td className="p-3 text-right font-mono font-black text-indigo-950 text-sm bg-indigo-50/80">{formatINR(grandTotal, true)}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
 
@@ -565,7 +621,7 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
             <div className="w-[calc(58.333%-8px)] shrink-0 space-y-3">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">In Words</span>
-                <p className="font-semibold text-slate-800 italic mt-0.5">{invoice.totalInWords}</p>
+                <p className="font-semibold text-slate-800 italic mt-0.5">{invoice.totalInWords || numberToIndianWords(grandTotal)}</p>
               </div>
 
               {invoice.showBankDetails !== false && (
@@ -592,29 +648,28 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
 
             <div className="w-[calc(41.666%-8px)] shrink-0 p-4 bg-slate-900 text-white rounded-xl space-y-2">
               <div className="flex justify-between text-slate-300 text-xs">
-                <span>{isQuote ? 'Subtotal:' : 'Taxable Value:'}</span>
-                <span className="font-mono">{formatINR(invoice.totalTaxableAmount)}</span>
+                <span>Subtotal:</span>
+                <span className="font-mono">{formatINR(computedSubtotal)}</span>
               </div>
-              {invoice.totalGst > 0 && (isInterState ? (
-                <div className="flex justify-between text-indigo-300 text-xs">
-                  <span>IGST {invoice.items?.[0]?.gstRate ? `(${invoice.items[0].gstRate}%)` : ''}:</span>
-                  <span className="font-mono">{formatINR(invoice.totalIgst || invoice.totalGst)}</span>
+              {totalDiscount > 0 && (
+                <div className="flex justify-between text-emerald-400 text-xs font-semibold">
+                  <span>Discount:</span>
+                  <span className="font-mono">- {formatINR(totalDiscount)}</span>
                 </div>
-              ) : (
-                <>
-                  <div className="flex justify-between text-slate-300 text-xs">
-                    <span>CGST {invoice.items?.[0]?.gstRate ? `(${invoice.items[0].gstRate / 2}%)` : ''}:</span>
-                    <span className="font-mono">{formatINR(invoice.totalCgst)}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-300 text-xs">
-                    <span>SGST {invoice.items?.[0]?.gstRate ? `(${invoice.items[0].gstRate / 2}%)` : ''}:</span>
-                    <span className="font-mono">{formatINR(invoice.totalSgst)}</span>
-                  </div>
-                </>
-              ))}
-              <div className="pt-2 border-t border-slate-700 flex justify-between text-base font-bold text-white">
-                <span>Total Amount:</span>
-                <span className="font-mono text-indigo-300">{formatINR(grandTotal)}</span>
+              )}
+              <div className="flex justify-between text-slate-300 text-xs">
+                <span>{isQuote ? 'Subtotal (Net):' : 'Taxable Value:'}</span>
+                <span className="font-mono">{formatINR(computedTaxable)}</span>
+              </div>
+              {computedGst > 0 && (
+                <div className="flex justify-between text-indigo-300 text-xs font-semibold">
+                  <span>GST {invoice.items?.[0]?.gstRate ? `(${invoice.items[0].gstRate}%)` : ''}:</span>
+                  <span className="font-mono">{formatINR(computedGst)}</span>
+                </div>
+              )}
+              <div className="pt-2 border-t-2 border-slate-600 flex justify-between items-center text-base font-bold text-white bg-slate-800/80 px-2 py-1.5 rounded-lg my-1">
+                <span className="uppercase tracking-wider font-extrabold text-xs">Grand Total:</span>
+                <span className="font-mono text-lg font-black text-emerald-400">{formatINR(grandTotal)}</span>
               </div>
               {advancePaid > 0 && (
                 <div className="flex justify-between text-emerald-400 text-xs">
@@ -678,6 +733,7 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
               <tr className="border-b border-slate-300 font-bold uppercase text-[10px]">
                 <th className="py-2">{isQuote ? 'Service Details' : 'Item'}</th>
                 {!isQuote && <th className="py-2 text-right">Amount</th>}
+                {!isQuote && <th className="py-2 text-right">Disc</th>}
                 {!isQuote && <th className="py-2 text-right">Taxable</th>}
                 {!isQuote && <th className="py-2 text-right">GST</th>}
                 <th className="py-2 text-right">{isQuote ? 'Amount' : 'Total'}</th>
@@ -691,29 +747,61 @@ export const InvoicePDFTemplate: React.FC<InvoicePDFTemplateProps> = ({
                     {item.description && <p className="text-[11px] text-slate-500 whitespace-pre-line mt-0.5">{item.description}</p>}
                   </td>
                   {!isQuote && <td className="py-2.5 text-right font-mono">{formatINR(item.rate, false)}</td>}
+                  {!isQuote && (
+                    <td className="py-2.5 text-right font-mono text-slate-500">
+                      {item.discountAmount > 0 ? (
+                        <span>
+                          {formatINR(item.discountAmount, false)}
+                          {item.discountType === 'percentage' && item.discountValue ? (
+                            <span className="text-[9.5px] text-slate-400 block font-sans">({item.discountValue}%)</span>
+                          ) : null}
+                        </span>
+                      ) : '-'}
+                    </td>
+                  )}
                   {!isQuote && <td className="py-2.5 text-right font-mono">{formatINR(item.taxableAmount, false)}</td>}
                   {!isQuote && <td className="py-2.5 text-right font-mono">{formatINR(item.totalGstAmount, false)}</td>}
                   <td className="py-2.5 text-right font-mono font-bold text-black">{formatINR(isQuote ? (item.rate * item.quantity - (item.discountAmount || 0)) : item.total, false)}</td>
                 </tr>
               ))}
             </tbody>
+            <tfoot className="border-t-2 border-black font-bold">
+              <tr>
+                <td className="py-2 uppercase tracking-wider font-bold">Grand Total</td>
+                {!isQuote && <td className="py-2 text-right font-mono">{formatINR(computedSubtotal, false)}</td>}
+                {!isQuote && <td className="py-2 text-right font-mono text-emerald-800">{totalDiscount > 0 ? `-${formatINR(totalDiscount, false)}` : '-'}</td>}
+                {!isQuote && <td className="py-2 text-right font-mono">{formatINR(computedTaxable, false)}</td>}
+                {!isQuote && <td className="py-2 text-right font-mono">{formatINR(computedGst, false)}</td>}
+                <td className="py-2 text-right font-mono font-black text-black bg-slate-100">{formatINR(grandTotal, true)}</td>
+              </tr>
+            </tfoot>
           </table>
 
           <div className="flex justify-end text-xs">
             <div className="w-64 space-y-1.5 border-b border-black pb-3">
               <div className="flex justify-between text-slate-600">
-                <span>Taxable Amount:</span>
-                <span className="font-mono">{formatINR(invoice.totalTaxableAmount)}</span>
+                <span>Subtotal:</span>
+                <span className="font-mono">{formatINR(computedSubtotal)}</span>
               </div>
-              {invoice.totalGst > 0 && (
-                <div className="flex justify-between text-slate-600">
-                  <span>Total GST:</span>
-                  <span className="font-mono">{formatINR(invoice.totalGst)}</span>
+              {totalDiscount > 0 && (
+                <div className="flex justify-between text-emerald-700 font-semibold">
+                  <span>Discount:</span>
+                  <span className="font-mono">- {formatINR(totalDiscount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm font-bold text-black pt-1 border-t border-slate-300">
-                <span>Total Amount:</span>
-                <span className="font-mono">{formatINR(grandTotal)}</span>
+              <div className="flex justify-between text-slate-600">
+                <span>Taxable Amount:</span>
+                <span className="font-mono">{formatINR(computedTaxable)}</span>
+              </div>
+              {computedGst > 0 && (
+                <div className="flex justify-between text-slate-600">
+                  <span>Total GST:</span>
+                  <span className="font-mono">{formatINR(computedGst)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center text-sm font-bold text-black pt-1.5 border-t-2 border-black">
+                <span className="uppercase tracking-wider font-extrabold">Grand Total:</span>
+                <span className="font-mono text-base font-black">{formatINR(grandTotal)}</span>
               </div>
               {advancePaid > 0 && (
                 <div className="flex justify-between text-emerald-700 text-xs">

@@ -11,7 +11,8 @@ import {
   PaymentSettings,
   PdfSettings,
   AuditLog,
-  CustomerOnboarding
+  CustomerOnboarding,
+  InvoicePayment
 } from '../types';
 
 const BASE_URL = '/api';
@@ -184,20 +185,40 @@ export const api = {
     await handleResponse<any>(res);
   },
 
+  async getInvoicePayments(id: string): Promise<{ success: boolean; data: InvoicePayment[]; invoiceNumber: string; clientName: string; grandTotal: number; amountPaid: number; balanceDue: number; status: string }> {
+    const res = await fetch(`${BASE_URL}/invoices/${id}/payments`);
+    return handleResponse<any>(res);
+  },
+
   async recordPayment(id: string, paymentData: {
     amount: number;
     paymentDate: string;
     paymentMethod: string;
+    paymentType?: string;
     transactionId?: string;
     notes?: string;
+    clientId?: string;
+    clientName?: string;
+    invoiceNumber?: string;
+    dealId?: string;
+    dealTitle?: string;
+    serviceName?: string;
   }): Promise<{ data: Invoice; payment: any }> {
     const res = await fetch(`${BASE_URL}/invoices/${id}/payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(paymentData)
     });
-    const json = await res.json();
+    const json = await handleResponse<any>(res);
     return { data: json.data, payment: json.payment };
+  },
+
+  async deleteInvoicePayment(invoiceId: string, paymentId: string): Promise<Invoice> {
+    const res = await fetch(`${BASE_URL}/invoices/${invoiceId}/payments/${paymentId}`, {
+      method: 'DELETE'
+    });
+    const json = await handleResponse<any>(res);
+    return json.data;
   },
 
   async duplicateInvoice(id: string): Promise<Invoice> {
@@ -257,9 +278,13 @@ export const api = {
 
   async convertQuoteToInvoice(id: string): Promise<Invoice> {
     const res = await fetch(`${BASE_URL}/quotes/${id}/convert-to-invoice`, {
-      method: 'POST'
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
     });
     const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json.message || json.error || 'Failed to convert estimate to invoice');
+    }
     return json.invoice;
   },
 
@@ -343,6 +368,29 @@ export const api = {
 
   async triggerRecurringInvoice(id: string): Promise<Invoice> {
     return this.triggerRecurring(id);
+  },
+
+  async recordRenewalPayment(id: string, data: any): Promise<{ success: boolean; data: RecurringInvoice; payment: any; message: string }> {
+    const res = await fetch(`${BASE_URL}/recurring-invoices/${id}/renew`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return handleResponse<any>(res);
+  },
+
+  async addRenewalPeriod(id: string, data: any): Promise<{ success: boolean; data: RecurringInvoice; newPeriod: any }> {
+    const res = await fetch(`${BASE_URL}/recurring-invoices/${id}/periods`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return handleResponse<any>(res);
+  },
+
+  async getRenewalHistory(id: string): Promise<{ success: boolean; renewalHistory: any[]; renewalPayments: any[]; recurring: RecurringInvoice }> {
+    const res = await fetch(`${BASE_URL}/recurring-invoices/${id}/renewals`);
+    return handleResponse<any>(res);
   },
 
   // Expenses

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Invoice } from '../../types';
 import { formatINR } from '../../utils/gstUtils';
+import { getInvoicePdfFilename } from '../../utils/pdfGenerator';
 import { X, Send, FileText, CheckCircle2 } from 'lucide-react';
 
 interface SendEmailModalProps {
@@ -117,7 +118,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                 <FileText className="w-5 h-5" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-slate-800">Invoice_{invoice.invoiceNumber}.pdf</p>
+                <p className="font-semibold text-slate-800">{getInvoicePdfFilename(invoice)}</p>
                 <p className="text-[11px] text-slate-500">Auto-generated PDF • {formatINR(invoice.grandTotal)}</p>
               </div>
               <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium">Attached</span>

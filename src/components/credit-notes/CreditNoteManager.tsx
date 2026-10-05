@@ -5,7 +5,7 @@ import { api } from '../../utils/api';
 import { Plus, Search, FileText, CheckCircle, Trash2, X, AlertCircle, Eye, Download, Printer } from 'lucide-react';
 import { toast } from '../common/Toast';
 import { InvoicePDFTemplate } from '../invoices/InvoicePDFTemplate';
-import { downloadElementAsPdf, triggerPrint } from '../../utils/pdfGenerator';
+import { downloadElementAsPdf, triggerPrint, getClientPdfFilename } from '../../utils/pdfGenerator';
 
 interface CreditNoteManagerProps {
   creditNotes: CreditNote[];
@@ -210,7 +210,8 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
                             try {
                               setViewingCreditNote(cn);
                               setTimeout(async () => {
-                                await downloadElementAsPdf(`modal-cn-pdf-${cn.id}`, `CreditNote-${cn.creditNoteNumber}.pdf`);
+                                const filename = getClientPdfFilename(cn.client?.name || cn.clientName, `CreditNote-${cn.creditNoteNumber}`);
+                                await downloadElementAsPdf(`modal-cn-pdf-${cn.id}`, filename);
                                 toast.success('Credit Note PDF downloaded');
                               }, 150);
                             } catch {
@@ -258,7 +259,8 @@ export const CreditNoteManager: React.FC<CreditNoteManagerProps> = ({
                 </button>
                 <button
                   onClick={async () => {
-                    await downloadElementAsPdf(`modal-cn-pdf-${viewingCreditNote.id}`, `CreditNote-${viewingCreditNote.creditNoteNumber}.pdf`);
+                    const filename = getClientPdfFilename(viewingCreditNote.client?.name || viewingCreditNote.clientName, `CreditNote-${viewingCreditNote.creditNoteNumber}`);
+                    await downloadElementAsPdf(`modal-cn-pdf-${viewingCreditNote.id}`, filename);
                     toast.success('Credit Note PDF downloaded');
                   }}
                   className="px-3 py-1.5 bg-teal-700 hover:bg-teal-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"

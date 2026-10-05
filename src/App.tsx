@@ -58,6 +58,7 @@ export function App() {
   });
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [previousTab, setPreviousTab] = useState<string>('invoices');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -132,6 +133,7 @@ export function App() {
 
   const handleStartCreateInvoice = (client?: Client) => {
     setEditingInvoice(null);
+    setPreviousTab(activeTab);
     setActiveTab('create_invoice');
   };
 
@@ -171,11 +173,13 @@ export function App() {
     };
 
     setEditingInvoice(draftInvoice);
+    setPreviousTab(activeTab);
     setActiveTab('create_invoice');
   };
 
   const handleEditInvoice = (inv: Invoice) => {
     setEditingInvoice(inv);
+    setPreviousTab(activeTab);
     setActiveTab('create_invoice');
   };
 
@@ -267,12 +271,15 @@ export function App() {
               {activeTab === 'create_invoice' && (
                 <InvoiceEditor
                   initialInvoice={editingInvoice}
-                  onBack={() => setActiveTab('invoices')}
+                  clients={clients}
+                  invoices={invoices}
+                  quotes={quotes}
+                  onBack={() => setActiveTab(previousTab || 'invoices')}
                   onSaveSuccess={handleSaveInvoiceSuccess}
                   onRecordPayment={(inv) => setPaymentInvoice(inv)}
                   onClientCreated={(newClient) => {
                     setClients(prev => {
-                      if (prev.some(c => c.id === newClient.id)) return prev;
+                      if (prev.some(c => c.id === newClient.id || c.name?.toLowerCase().trim() === newClient.name?.toLowerCase().trim())) return prev;
                       return [newClient, ...prev];
                     });
                   }}
@@ -301,11 +308,31 @@ export function App() {
                 <QuoteManager
                   quotes={quotes}
                   clients={clients}
+                  invoices={invoices}
                   businessProfile={businessProfile}
                   onRefresh={fetchAllData}
-                  onConvertToInvoice={(quote) => {
-                    fetchAllData();
+                  onConvertToInvoice={async (quote, createdInvoice) => {
+                    if (createdInvoice) {
+                      setInvoices(prev => {
+                        const exists = prev.some(inv => inv.id === createdInvoice.id);
+                        if (exists) return prev.map(inv => inv.id === createdInvoice.id ? createdInvoice : inv);
+                        return [createdInvoice, ...prev];
+                      });
+                      if (createdInvoice.client && createdInvoice.client.name) {
+                        setClients(prev => {
+                          const exists = prev.some(c => c.id === createdInvoice.client.id || c.name?.toLowerCase().trim() === createdInvoice.client.name?.toLowerCase().trim());
+                          if (exists) return prev;
+                          return [createdInvoice.client, ...prev];
+                        });
+                      }
+                    }
+                    await fetchAllData();
                     setActiveTab('invoices');
+                  }}
+                  onEditInvoice={(invoice) => {
+                    setEditingInvoice(invoice);
+                    setPreviousTab('quotes');
+                    setActiveTab('create_invoice');
                   }}
                 />
               )}
@@ -381,7 +408,7 @@ export function App() {
                     if (el) {
                       setIsDownloadingPdf(true);
                       try {
-                        await downloadElementAsPdf(el, getInvoicePdfFilename(viewingInvoice));
+                        await downloadElementAsPdf(el, getInvoicePdfFilename(viewingInvoice, clients));
                       } catch (err) {
                         console.error('Download error:', err);
                         toast.error('Could not download PDF. You can also use Print.');
@@ -404,7 +431,7 @@ export function App() {
                   onClick={() => {
                     const el = document.getElementById(`modal-global-pdf-${viewingInvoice.id}`);
                     if (el) {
-                      printInvoiceElement(el, getInvoicePdfFilename(viewingInvoice).replace('.pdf', ''));
+                      printInvoiceElement(el, getInvoicePdfFilename(viewingInvoice, clients).replace('.pdf', ''));
                     } else {
                       triggerPrint();
                     }

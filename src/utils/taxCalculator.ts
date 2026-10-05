@@ -94,7 +94,8 @@ export function calculateLineItem(item: LineItemInput, isInterState: boolean): C
   const dVal = Math.max(0, Number(item.discountValue) || 0);
 
   if (dType === 'percentage') {
-    discountAmount = round2((rawSubtotal * dVal) / 100);
+    const validPercent = Math.min(100, dVal);
+    discountAmount = round2((rawSubtotal * validPercent) / 100);
   } else {
     discountAmount = round2(dVal);
   }
@@ -159,7 +160,8 @@ export function calculateInvoiceTotals(
   const gVal = Math.max(0, Number(options.discountValue) || 0);
 
   if (gType === 'percentage') {
-    globalDiscountAmount = round2((afterItemDiscount * gVal) / 100);
+    const validPercent = Math.min(100, gVal);
+    globalDiscountAmount = round2((afterItemDiscount * validPercent) / 100);
   } else {
     globalDiscountAmount = round2(gVal);
   }
@@ -233,7 +235,9 @@ export function calculateInvoiceTotals(
   // 8. Payment & Balance Due
   const advance = round2(Math.max(0, Number(options.advanceAmount) || 0));
   const paymentsTotal = round2(Math.max(0, Number(options.paymentsTotal) || 0));
-  const amountPaid = round2(advance + paymentsTotal);
+  // If payment records exist, paymentsTotal is the exact sum of all payment transactions.
+  // If no payment records exist yet, fall back to initial upfront advance.
+  const amountPaid = paymentsTotal > 0 ? paymentsTotal : advance;
   const balanceDue = round2(Math.max(0, grandTotal - amountPaid));
 
   // 9. Status calculation

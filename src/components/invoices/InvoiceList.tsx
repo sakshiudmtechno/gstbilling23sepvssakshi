@@ -4,6 +4,7 @@ import { formatINR } from '../../utils/gstUtils';
 import { api } from '../../utils/api';
 import { downloadElementAsPdf, triggerPrint, printInvoiceElement, exportToCSV, getInvoicePdfFilename } from '../../utils/pdfGenerator';
 import { RecordPaymentModal } from './RecordPaymentModal';
+import { PaymentHistoryModal } from './PaymentHistoryModal';
 import { SendEmailModal } from './SendEmailModal';
 import { InvoicePDFTemplate } from './InvoicePDFTemplate';
 import { toast, showConfirm } from '../common/Toast';
@@ -25,7 +26,8 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  Loader2
+  Loader2,
+  History
 } from 'lucide-react';
 
 interface InvoiceListProps {
@@ -51,9 +53,30 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   // Modals state
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
+  const [historyInvoice, setHistoryInvoice] = useState<Invoice | null>(null);
   const [emailInvoice, setEmailInvoice] = useState<Invoice | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [directDownloadInvoice, setDirectDownloadInvoice] = useState<Invoice | null>(null);
+
+  // Aggregate all unique clients from props and invoices (deduplicated by name)
+  const allClients = useMemo(() => {
+    const map = new Map<string, Client>();
+    for (const c of clients) {
+      if (c && c.name) {
+        const key = c.name.toLowerCase().trim();
+        if (!map.has(key)) map.set(key, c);
+      }
+    }
+    for (const inv of invoices) {
+      if (inv.client && inv.client.name) {
+        const key = inv.client.name.toLowerCase().trim();
+        if (!map.has(key)) {
+          map.set(key, inv.client);
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [clients, invoices]);
 
   // Filter logic
   const filteredInvoices = useMemo(() => {
@@ -71,7 +94,15 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
 
       // Client
-      const matchClient = clientFilter === 'all' || inv.clientId === clientFilter;
+      let matchClient = true;
+      if (clientFilter !== 'all') {
+        const targetCl = allClients.find(c => c.id === clientFilter || c.name === clientFilter);
+        const targetName = targetCl?.name?.toLowerCase().trim();
+        matchClient =
+          inv.clientId === clientFilter ||
+          inv.client?.id === clientFilter ||
+          (!!targetName && (inv.client?.name || '').toLowerCase().trim() === targetName);
+      }
 
       // Date range filter
       let matchDate = true;
@@ -143,7 +174,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       try {
         const el = document.getElementById(`direct-invoice-pdf-${inv.id}`) || document.getElementById(`modal-invoice-pdf-${inv.id}`);
         if (el) {
-          const filename = getInvoicePdfFilename(inv);
+          const filename = getInvoicePdfFilename(inv, clients);
           await downloadElementAsPdf(el, filename);
         } else {
           throw new Error('Invoice template element could not be found');
@@ -162,7 +193,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
     if (!viewingInvoice) return;
     const el = document.getElementById(`modal-invoice-pdf-${viewingInvoice.id}`);
     if (el) {
-      printInvoiceElement(el, `Tax_Invoice_${viewingInvoice.invoiceNumber}`);
+      printInvoiceElement(el, getInvoicePdfFilename(viewingInvoice, clients).replace('.pdf', ''));
     } else {
       triggerPrint();
     }
@@ -177,10 +208,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       'Due Date',
       'Subtotal',
       'Taxable Value',
-      'CGST',
-      'SGST',
-      'IGST',
-      'Total GST',
+      'GST',
       'Grand Total',
       'Amount Paid',
       'Balance Due',
@@ -195,9 +223,6 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       inv.dueDate,
       inv.subtotal,
       inv.totalTaxableAmount,
-      inv.totalCgst,
-      inv.totalSgst,
-      inv.totalIgst,
       inv.totalGst,
       inv.grandTotal,
       inv.amountPaid || 0,
@@ -314,8 +339,8 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
             onChange={(e) => setClientFilter(e.target.value)}
             className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-teal-700/20 focus:border-teal-700 outline-hidden cursor-pointer"
           >
-            <option value="all">All Clients</option>
-            {clients.map(c => (
+            <option value="all">All Clients ({allClients.length})</option>
+            {allClients.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
@@ -345,7 +370,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                 <th className="p-3.5">Date / Due</th>
                 <th className="p-3.5 text-right">Taxable</th>
                 <th className="p-3.5 text-right">GST</th>
-                <th className="p-3.5 text-right">Total (₹)</th>
+                <th className="p-3.5 text-right font-extrabold text-teal-950">Grand Total (₹)</th>
                 <th className="p-3.5 text-right">Paid / Balance</th>
                 <th className="p-3.5 text-center">Status</th>
                 <th className="p-3.5 text-right">Actions</th>
@@ -378,14 +403,16 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                     </td>
 
                     <td className="p-3.5 text-right font-mono font-medium text-slate-700">
-                      {formatINR(inv.totalTaxableAmount, false)}
+                      <div>{formatINR(inv.totalTaxableAmount, false)}</div>
+                      {((inv.totalItemDiscount || 0) + (inv.discountAmount || 0) > 0) && (
+                        <span className="inline-block text-[9.5px] font-semibold text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200 mt-0.5">
+                          Disc -{formatINR((inv.totalItemDiscount || 0) + (inv.discountAmount || 0), false)}
+                        </span>
+                      )}
                     </td>
 
-                    <td className="p-3.5 text-right font-mono text-slate-600">
+                    <td className="p-3.5 text-right font-mono text-slate-600 font-semibold">
                       {formatINR(inv.totalGst, false)}
-                      <span className="block text-[10px] text-slate-400">
-                        {inv.isInterState ? 'IGST' : 'CGST+SGST'}
-                      </span>
                     </td>
 
                     <td className="p-3.5 text-right font-mono font-bold text-slate-950 text-sm">
@@ -393,8 +420,22 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                     </td>
 
                     <td className="p-3.5 text-right font-mono">
-                      <p className="font-semibold text-emerald-700">{formatINR(inv.amountPaid || 0, false)}</p>
-                      <p className="text-[11px] text-rose-700 font-medium">Bal: {formatINR(inv.balanceDue, false)}</p>
+                      <button
+                        type="button"
+                        onClick={() => setHistoryInvoice(inv)}
+                        className="text-right group cursor-pointer hover:bg-slate-100/90 p-1.5 -m-1.5 rounded-lg transition-colors block w-full"
+                        title="Click to view full payment history and linked details"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <p className="font-semibold text-emerald-700">{formatINR(inv.amountPaid || 0, false)}</p>
+                          {(inv.payments && inv.payments.length > 0) && (
+                            <span className="text-[9px] font-sans px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold group-hover:bg-emerald-200">
+                              {inv.payments.length} {inv.payments.length === 1 ? 'pay' : 'pays'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-rose-700 font-medium">Bal: {formatINR(inv.balanceDue, false)}</p>
+                      </button>
                     </td>
 
                     <td className="p-3.5 text-center">
@@ -440,6 +481,14 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                           title="Record Payment"
                         >
                           <CreditCard className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => setHistoryInvoice(inv)}
+                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors cursor-pointer"
+                          title="Payment History & Transactions"
+                        >
+                          <History className="w-4 h-4" />
                         </button>
 
                         <button
@@ -501,7 +550,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                     if (el) {
                       setDownloadingId(viewingInvoice.id);
                       try {
-                        const filename = getInvoicePdfFilename(viewingInvoice);
+                        const filename = getInvoicePdfFilename(viewingInvoice, clients);
                         await downloadElementAsPdf(el, filename);
                       } finally {
                         setDownloadingId(null);
@@ -549,9 +598,34 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           invoice={paymentInvoice}
           isOpen={!!paymentInvoice}
           onClose={() => setPaymentInvoice(null)}
+          onViewHistory={() => {
+            const current = paymentInvoice;
+            setPaymentInvoice(null);
+            setHistoryInvoice(current);
+          }}
           onSubmit={async (pData) => {
             await api.recordPayment(paymentInvoice.id, pData);
             onRefresh();
+          }}
+        />
+      )}
+
+      {/* Payment History & Breakdown Modal */}
+      {historyInvoice && (
+        <PaymentHistoryModal
+          invoice={historyInvoice}
+          isOpen={!!historyInvoice}
+          onClose={() => setHistoryInvoice(null)}
+          onRecordPayment={(inv) => {
+            setHistoryInvoice(null);
+            setPaymentInvoice(inv);
+          }}
+          onRefresh={async () => {
+            await onRefresh();
+            try {
+              const res = await api.getInvoice(historyInvoice.id);
+              if (res) setHistoryInvoice(res);
+            } catch (e) {}
           }}
         />
       )}

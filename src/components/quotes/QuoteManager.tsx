@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Quote, Client, BusinessProfile, QuoteItem } from '../../types';
+import { Quote, Client, BusinessProfile, QuoteItem, Invoice } from '../../types';
 import { api } from '../../utils/api';
-import { downloadElementAsPdf, triggerPrint } from '../../utils/pdfGenerator';
+import { downloadElementAsPdf, triggerPrint, getClientPdfFilename } from '../../utils/pdfGenerator';
 import { InvoicePDFTemplate } from '../invoices/InvoicePDFTemplate';
 import { PREDEFINED_SERVICES, calculateAdBudgetStats } from '../../constants/services';
 import { formatINR, numberToIndianWords } from '../../utils/gstUtils';
@@ -25,23 +25,29 @@ import {
   Check, 
   Layers,
   HelpCircle,
-  Megaphone
+  Megaphone,
+  FileCheck,
+  CheckCircle2
 } from 'lucide-react';
 
 interface QuoteManagerProps {
   quotes: Quote[];
   clients: Client[];
+  invoices?: Invoice[];
   businessProfile: BusinessProfile | null;
   onRefresh: () => void;
-  onConvertToInvoice: (quote: Quote) => void;
+  onConvertToInvoice: (quote: Quote, createdInvoice?: Invoice) => void;
+  onEditInvoice?: (invoice: Invoice) => void;
 }
 
 export const QuoteManager: React.FC<QuoteManagerProps> = ({
   quotes,
   clients,
+  invoices = [],
   businessProfile,
   onRefresh,
-  onConvertToInvoice
+  onConvertToInvoice,
+  onEditInvoice
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingQuoteId, setEditingQuoteId] = useState<string | null>(null);
@@ -56,6 +62,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
   const [downloadingQuoteId, setDownloadingQuoteId] = useState<string | null>(null);
   const [directDownloadQuote, setDirectDownloadQuote] = useState<Quote | null>(null);
+  const [convertingQuoteId, setConvertingQuoteId] = useState<string | null>(null);
 
   // Quick Quote Form State
   const [quoteNumber, setQuoteNumber] = useState(`EST-${Date.now().toString().slice(-4)}`);
@@ -145,7 +152,26 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
 
   const handleItemChange = (index: number, field: keyof QuoteItem, value: any) => {
     const newItems = [...items];
-    (newItems[index] as any)[field] = value;
+    const item = { ...newItems[index], [field]: value };
+    const rate = Math.max(0, Number(item.rate) || 0);
+    const qty = Math.max(0, Number(item.quantity) || 1);
+    const gross = rate * qty;
+    const dType = item.discountType || 'percentage';
+    const dVal = Math.max(0, Number(item.discountValue) || 0);
+    const rawDisc = dType === 'percentage' ? (gross * Math.min(100, dVal)) / 100 : dVal;
+    const discAmt = Math.min(gross, Math.max(0, rawDisc));
+    const taxable = Math.max(0, gross - discAmt);
+    const selectedGst = applyGst ? gstRate : 0;
+    const gstAmt = (taxable * selectedGst) / 100;
+
+    item.discountType = dType;
+    item.discountValue = dVal;
+    item.discountAmount = Math.round(discAmt * 100) / 100;
+    item.taxableAmount = Math.round(taxable * 100) / 100;
+    item.totalGstAmount = Math.round(gstAmt * 100) / 100;
+    item.total = Math.round((taxable + (applyGst ? gstAmt : 0)) * 100) / 100;
+
+    newItems[index] = item;
     setItems(newItems);
   };
 
@@ -205,17 +231,26 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
     };
 
     let subtotal = 0;
+    let totalDiscount = 0;
+    let totalTaxable = 0;
     let totalGst = 0;
     const isInter = clientStateCode !== (businessProfile?.stateCode || '23');
     const selectedGstRate = applyGst ? gstRate : 0;
 
     const finalItems = items.map((item, i) => {
-      const rate = Number(item.rate) || 0;
-      const qty = Number(item.quantity) || 1;
-      const taxable = rate * qty;
+      const rate = Math.max(0, Number(item.rate) || 0);
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      const gross = rate * qty;
+      const dType = item.discountType || 'percentage';
+      const dVal = Math.max(0, Number(item.discountValue) || 0);
+      const rawDisc = dType === 'percentage' ? (gross * Math.min(100, dVal)) / 100 : dVal;
+      const discAmt = Math.min(gross, Math.max(0, rawDisc));
+      const taxable = Math.max(0, gross - discAmt);
       const gstAmt = (taxable * selectedGstRate) / 100;
 
-      subtotal += taxable;
+      subtotal += gross;
+      totalDiscount += discAmt;
+      totalTaxable += taxable;
       totalGst += gstAmt;
 
       return {
@@ -226,20 +261,20 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
         quantity: qty,
         unit: item.unit || 'JOB',
         rate: rate,
-        discountType: 'percentage',
-        discountValue: 0,
-        discountAmount: 0,
+        discountType: dType,
+        discountValue: dVal,
+        discountAmount: discAmt,
         taxableAmount: taxable,
         gstRate: selectedGstRate,
         cgstAmount: applyGst && !isInter ? gstAmt / 2 : 0,
         sgstAmount: applyGst && !isInter ? gstAmt / 2 : 0,
         igstAmount: applyGst && isInter ? gstAmt : 0,
         totalGstAmount: gstAmt,
-        total: taxable + gstAmt
+        total: taxable + (applyGst ? gstAmt : 0)
       } as QuoteItem;
     });
 
-    const grandTotal = subtotal + (applyGst ? totalGst : 0);
+    const grandTotal = totalTaxable + (applyGst ? totalGst : 0);
 
     const newQuote = {
       quoteNumber,
@@ -253,7 +288,8 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
       currency: 'INR',
       items: finalItems,
       subtotal,
-      totalTaxableAmount: subtotal,
+      totalItemDiscount: totalDiscount,
+      totalTaxableAmount: totalTaxable,
       totalGst: applyGst ? totalGst : 0,
       totalCgst: applyGst && !isInter ? totalGst / 2 : 0,
       totalSgst: applyGst && !isInter ? totalGst / 2 : 0,
@@ -288,13 +324,31 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
   const handleDownloadEstimatePdf = async () => {
     try {
       setIsDownloadingPdf(true);
-      await downloadElementAsPdf('live-quote-pdf', `Estimate-${quoteNumber}.pdf`);
-      toast.success('Estimate PDF downloaded');
+      const targetClientName = clientName.trim() || companyName.trim();
+      const filename = getClientPdfFilename(targetClientName, `Estimate-${quoteNumber}`);
+      await downloadElementAsPdf('live-quote-pdf', filename);
+      toast.success(`Estimate PDF "${filename}" downloaded`);
     } catch (err) {
       console.error('Failed to download PDF:', err);
       toast.error('Failed to generate estimate PDF. Please try again.');
     } finally {
       setIsDownloadingPdf(false);
+    }
+  };
+
+  const handleConvertToInvoice = async (quote: Quote) => {
+    try {
+      setConvertingQuoteId(quote.id);
+      toast.info(`Converting estimate "${quote.quoteNumber}" to Tax Invoice...`);
+      const createdInvoice = await api.convertQuoteToInvoice(quote.id);
+      toast.success(`Success! Estimate converted to Invoice #${createdInvoice.invoiceNumber}`);
+      await onRefresh();
+      onConvertToInvoice(quote, createdInvoice);
+    } catch (err: any) {
+      console.error('Convert to invoice error:', err);
+      toast.error(err.message || 'Failed to convert estimate to invoice. Please try again.');
+    } finally {
+      setConvertingQuoteId(null);
     }
   };
 
@@ -316,8 +370,10 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
       setDownloadingQuoteId(quote.id);
       setDirectDownloadQuote(quote);
       await new Promise(resolve => setTimeout(resolve, 150));
-      await downloadElementAsPdf(`direct-quote-pdf-${quote.id}`, `Estimate-${quote.quoteNumber}.pdf`);
-      toast.success('Estimate PDF downloaded');
+      const targetClient = quote.client?.name || (quote as any).clientName || (quote as any).customerName;
+      const filename = getClientPdfFilename(targetClient, `Estimate-${quote.quoteNumber}`);
+      await downloadElementAsPdf(`direct-quote-pdf-${quote.id}`, filename);
+      toast.success(`Estimate PDF "${filename}" downloaded`);
     } catch (err) {
       console.error('Failed to download quote PDF:', err);
       toast.error('Failed to generate PDF. Please try again.');
@@ -346,17 +402,26 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
   };
 
   let subtotal = 0;
+  let totalDiscount = 0;
+  let totalTaxable = 0;
   let totalGst = 0;
   const isInter = clientStateCode !== (businessProfile?.stateCode || '23');
   const selectedGstRate = applyGst ? gstRate : 0;
 
   const finalItems = items.map((item, i) => {
-    const rate = Number(item.rate) || 0;
-    const qty = Number(item.quantity) || 1;
-    const taxable = rate * qty;
+    const rate = Math.max(0, Number(item.rate) || 0);
+    const qty = Math.max(1, Number(item.quantity) || 1);
+    const gross = rate * qty;
+    const dType = item.discountType || 'percentage';
+    const dVal = Math.max(0, Number(item.discountValue) || 0);
+    const rawDisc = dType === 'percentage' ? (gross * Math.min(100, dVal)) / 100 : dVal;
+    const discAmt = Math.min(gross, Math.max(0, rawDisc));
+    const taxable = Math.max(0, gross - discAmt);
     const gstAmt = (taxable * selectedGstRate) / 100;
 
-    subtotal += taxable;
+    subtotal += gross;
+    totalDiscount += discAmt;
+    totalTaxable += taxable;
     totalGst += gstAmt;
 
     return {
@@ -367,9 +432,9 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
       quantity: qty,
       unit: 'JOB',
       rate: rate,
-      discountType: 'percentage',
-      discountValue: 0,
-      discountAmount: 0,
+      discountType: dType,
+      discountValue: dVal,
+      discountAmount: discAmt,
       taxableAmount: taxable,
       gstRate: selectedGstRate,
       cgstAmount: applyGst && !isInter ? gstAmt / 2 : 0,
@@ -380,7 +445,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
     } as QuoteItem;
   });
 
-  const grandTotal = subtotal + (applyGst ? totalGst : 0);
+  const grandTotal = totalTaxable + (applyGst ? totalGst : 0);
 
   const previewQuote = {
     quoteNumber,
@@ -394,7 +459,8 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
     currency: 'INR',
     items: finalItems,
     subtotal,
-    totalTaxableAmount: subtotal,
+    totalItemDiscount: totalDiscount,
+    totalTaxableAmount: totalTaxable,
     totalGst: applyGst ? totalGst : 0,
     totalCgst: applyGst && !isInter ? totalGst / 2 : 0,
     totalSgst: applyGst && !isInter ? totalGst / 2 : 0,
@@ -540,13 +606,40 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                        {quote.status !== 'converted' && (
+                        {quote.status !== 'converted' ? (
                           <button
-                            onClick={() => onConvertToInvoice(quote)}
-                            className="ml-1 px-2 py-1 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded text-xs font-semibold"
-                            title="Convert to Invoice"
+                            onClick={() => handleConvertToInvoice(quote)}
+                            disabled={convertingQuoteId === quote.id}
+                            className="ml-1 px-2.5 py-1 text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                            title="Convert Estimate to Tax Invoice"
                           >
-                            Convert to Invoice
+                            {convertingQuoteId === quote.id ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Converting...</span>
+                              </>
+                            ) : (
+                              <>
+                                <FileCheck className="w-3.5 h-3.5" />
+                                <span>Convert to Invoice</span>
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              const matchingInv = invoices?.find(inv => inv.id === quote.convertedToInvoiceId || inv.invoiceNumber === quote.convertedToInvoiceNumber);
+                              if (matchingInv && onEditInvoice) {
+                                onEditInvoice(matchingInv);
+                              } else {
+                                handleConvertToInvoice(quote);
+                              }
+                            }}
+                            className="ml-1 px-2 py-0.5 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                            title={`Converted to Invoice #${quote.convertedToInvoiceNumber || ''}. Click to open in Invoice Editor.`}
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>{quote.convertedToInvoiceNumber ? `Inv #${quote.convertedToInvoiceNumber}` : 'Converted'}</span>
                           </button>
                         )}
                       </div>
@@ -760,9 +853,9 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                           </select>
                         </div>
 
-                        {/* Title, Rate, Qty Grid */}
+                        {/* Title, Rate, Qty, Discount Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-end">
-                          <div className="md:col-span-6">
+                          <div className="md:col-span-5">
                             <label className="block text-[11px] font-semibold text-slate-700 mb-1">Service Title <span className="text-rose-500">*</span></label>
                             <input 
                               type="text" 
@@ -773,7 +866,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                               placeholder="e.g. Custom Website Development" 
                             />
                           </div>
-                          <div className="md:col-span-3">
+                          <div className="md:col-span-2">
                             <label className="block text-[11px] font-semibold text-slate-700 mb-1">Rate (₹) <span className="text-rose-500">*</span></label>
                             <input 
                               type="number" 
@@ -793,6 +886,32 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                               onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))} 
                               className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center text-slate-900 focus:border-teal-700 outline-hidden" 
                             />
+                          </div>
+                          <div className="md:col-span-2">
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="block text-[11px] font-semibold text-slate-700">Discount</label>
+                              {(item.discountAmount || 0) > 0 && (
+                                <span className="text-[9.5px] font-mono font-bold text-emerald-700">-₹{Math.round(item.discountAmount || 0)}</span>
+                              )}
+                            </div>
+                            <div className="flex gap-1">
+                              <input 
+                                type="number" 
+                                min={0}
+                                placeholder="0"
+                                value={item.discountValue || ''} 
+                                onChange={e => handleItemChange(index, 'discountValue', Number(e.target.value) || 0)} 
+                                className="w-full min-w-0 px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:border-teal-700 outline-hidden" 
+                              />
+                              <select
+                                value={item.discountType || 'percentage'}
+                                onChange={e => handleItemChange(index, 'discountType', e.target.value)}
+                                className="px-1.5 py-1.5 bg-slate-100 border border-slate-300 rounded-lg text-[10px] font-bold text-slate-700 outline-hidden shrink-0 cursor-pointer"
+                              >
+                                <option value="percentage">%</option>
+                                <option value="fixed">₹</option>
+                              </select>
+                            </div>
                           </div>
                           {items.length > 1 && (
                             <div className="md:col-span-1 flex justify-end">
@@ -1046,14 +1165,26 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                     {/* Financial summary card */}
                     <div className="bg-teal-50/60 rounded-xl p-3 border border-teal-100 space-y-2 text-xs">
                       <div className="flex justify-between text-slate-700">
-                        <span>Services Subtotal (Taxable):</span>
+                        <span>Services Subtotal (Gross):</span>
                         <span className="font-mono font-bold text-slate-900">₹{subtotal.toLocaleString('en-IN')}</span>
+                      </div>
+
+                      {totalDiscount > 0 && (
+                        <div className="flex justify-between text-emerald-800 font-semibold bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
+                          <span>Discount on Services:</span>
+                          <span className="font-mono font-bold">- ₹{totalDiscount.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between text-slate-700">
+                        <span>Taxable Amount (Net Base):</span>
+                        <span className="font-mono font-bold text-slate-900">₹{totalTaxable.toLocaleString('en-IN')}</span>
                       </div>
 
                       {applyGst && gstRate > 0 && (
                         <div className="flex justify-between text-teal-950 font-semibold border-t border-teal-100 pt-1.5">
                           <span>
-                            {isInter ? `IGST (${gstRate}%)` : `CGST (${gstRate/2}%) + SGST (${gstRate/2}%)`}:
+                            GST ({gstRate}%):
                           </span>
                           <span className="font-mono font-bold text-teal-800">+ ₹{totalGst.toLocaleString('en-IN')}</span>
                         </div>
@@ -1136,8 +1267,31 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                 <p className="text-xs text-slate-400">Quote #{viewingQuote.quoteNumber}</p>
               </div>
               <div className="flex items-center gap-3">
+                {viewingQuote.status !== 'converted' && (
+                  <button
+                    onClick={async () => {
+                      const quoteToConvert = viewingQuote;
+                      setViewingQuote(null);
+                      await handleConvertToInvoice(quoteToConvert);
+                    }}
+                    disabled={convertingQuoteId === viewingQuote.id}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
+                    title="Convert this estimate into an invoice"
+                  >
+                    {convertingQuoteId === viewingQuote.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileCheck className="w-4 h-4" />
+                    )}
+                    <span>Convert to Invoice</span>
+                  </button>
+                )}
                 <button 
-                  onClick={() => downloadElementAsPdf('modal-quote-pdf', `Estimate-${viewingQuote.quoteNumber}.pdf`)} 
+                  onClick={() => {
+                    const clientTarget = viewingQuote.client?.name || (viewingQuote as any).clientName || (viewingQuote as any).customerName;
+                    const filename = getClientPdfFilename(clientTarget, `Estimate-${viewingQuote.quoteNumber}`);
+                    downloadElementAsPdf('modal-quote-pdf', filename);
+                  }} 
                   className="px-3 py-1.5 bg-teal-700 hover:bg-teal-600 rounded text-xs font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <Download className="w-4 h-4" /> Download PDF
