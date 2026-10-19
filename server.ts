@@ -1784,6 +1784,8 @@ app.put('/api/quotes/:id', async (req, res) => {
 
     const updatedQuote = {
       ...updatedData,
+      id: req.params.id,
+      quoteNumber: updatedData.quoteNumber || existing.quoteNumber || req.params.id,
       isInterState,
       items: totals.items,
       subtotal: totals.subtotal,
@@ -1798,7 +1800,7 @@ app.put('/api/quotes/:id', async (req, res) => {
     };
 
     await setDoc('quotes', req.params.id, updatedQuote, true);
-    await addAuditLog('Quote Updated', 'quote', updatedQuote.id, updatedQuote.quoteNumber);
+    await addAuditLog('Quote Updated', 'quote', updatedQuote.id, updatedQuote.quoteNumber || req.params.id);
 
     res.json({ success: true, data: updatedQuote });
   } catch (err: any) {

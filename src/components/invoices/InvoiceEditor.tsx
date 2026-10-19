@@ -557,7 +557,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
       accountHolderName: 'UDM Techno Solutions (Sankalp Nayak)',
       ifscCode: 'BARB0MEGHNA',
       branch: 'Indore',
-      upiId: 'sankalpnayakk-2@okicici',
+      upiId: 'brewstack243668@aubiz',
       upiQrImageUrl: '/upi-qr.png'
     },
     clientId: selectedClientId,

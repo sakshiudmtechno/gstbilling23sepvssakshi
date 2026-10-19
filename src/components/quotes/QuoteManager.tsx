@@ -84,8 +84,40 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
   const [adDailyBudget, setAdDailyBudget] = useState<number>(200);
   const [adDays, setAdDays] = useState<number>(15);
 
+  const createEmptyItem = (id?: string): Partial<QuoteItem> => ({
+    id: id || `qi_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    name: '',
+    description: '',
+    rate: 0,
+    quantity: 1,
+    unit: 'JOB',
+    hsnSac: '9983',
+    discountType: 'percentage',
+    discountValue: 0,
+    discountAmount: 0,
+    taxableAmount: 0,
+    gstRate: applyGst ? gstRate : 0,
+    totalGstAmount: 0,
+    total: 0
+  });
+
   const [items, setItems] = useState<Partial<QuoteItem>[]>([
-    { id: '1', name: '', description: '', rate: 0, quantity: 1 }
+    {
+      id: '1',
+      name: '',
+      description: '',
+      rate: 0,
+      quantity: 1,
+      unit: 'JOB',
+      hsnSac: '9983',
+      discountType: 'percentage',
+      discountValue: 0,
+      discountAmount: 0,
+      taxableAmount: 0,
+      gstRate: 0,
+      totalGstAmount: 0,
+      total: 0
+    }
   ]);
 
   const handleEditQuote = (quote: Quote) => {
@@ -93,7 +125,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
     setQuoteNumber(quote.quoteNumber);
     
     // Parse client name/company if they were merged like "Name (Company)"
-    let cName = quote.client?.name || '';
+    let cName = quote.client?.name || (quote as any).clientName || (quote as any).customerName || '';
     let compName = '';
     const match = cName.match(/^(.*?)\s*\((.*?)\)$/);
     if (match) {
@@ -103,19 +135,27 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
     
     setClientName(cName);
     setCompanyName(compName);
-    setClientEmail(quote.client?.email || '');
-    setClientPhone(quote.client?.phone || '');
-    setClientAddress(quote.client?.billingAddress || '');
-    setClientState(quote.client?.state || 'Madhya Pradesh');
-    setClientStateCode(quote.client?.stateCode || '23');
-    setItems((quote.items || []).map(item => ({...item})));
+    setClientEmail(quote.client?.email || (quote as any).email || '');
+    setClientPhone(quote.client?.phone || (quote as any).phone || '');
+    setClientAddress(quote.client?.billingAddress || (quote.client as any)?.address || (quote as any).billingAddress || '');
+    setClientState(quote.client?.state || quote.placeOfSupply || 'Madhya Pradesh');
+    setClientStateCode(quote.client?.stateCode || quote.placeOfSupplyCode || '23');
     
     const hasGst = (quote.totalGst || 0) > 0 || ((quote.items?.[0]?.gstRate || 0) > 0);
+    const activeGstRate = hasGst ? (quote.items?.[0]?.gstRate || 18) : 18;
     setApplyGst(hasGst);
-    if (hasGst) {
-      setGstRate(quote.items?.[0]?.gstRate || 18);
+    setGstRate(activeGstRate);
+
+    if (quote.items && quote.items.length > 0) {
+      setItems(quote.items.map((item, idx) => ({
+        ...item,
+        id: item.id || `qi_${quote.id}_${idx}`,
+        quantity: item.quantity || 1,
+        rate: item.rate || 0,
+        gstRate: hasGst ? (item.gstRate ?? activeGstRate) : 0
+      })));
     } else {
-      setGstRate(0);
+      setItems([createEmptyItem()]);
     }
     
     if (quote.quoteDate) setQuoteDate(quote.quoteDate);
@@ -132,7 +172,22 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
     setClientEmail('');
     setClientPhone('');
     setClientAddress('');
-    setItems([{ id: '1', name: '', description: '', rate: 0, quantity: 1 }]);
+    setItems([{
+      id: '1',
+      name: '',
+      description: '',
+      rate: 0,
+      quantity: 1,
+      unit: 'JOB',
+      hsnSac: '9983',
+      discountType: 'percentage',
+      discountValue: 0,
+      discountAmount: 0,
+      taxableAmount: 0,
+      gstRate: 0,
+      totalGstAmount: 0,
+      total: 0
+    }]);
     setApplyGst(false);
     setGstRate(18);
     setAdPlatform('meta');
@@ -143,79 +198,212 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
   };
 
   const handleAddItem = () => {
-    setItems([...items, { id: Date.now().toString(), name: '', description: '', rate: 0, quantity: 1 }]);
+    setItems(prev => [...prev, createEmptyItem()]);
   };
 
   const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
+    setItems(prev => {
+      const filtered = prev.filter((_, i) => i !== index);
+      return filtered.length > 0 ? filtered : [createEmptyItem()];
+    });
+  };
+
+  // Atomically select and apply a pre-defined service package to an existing item row
+  const handleApplyPredefinedService = (index: number, serviceId: string) => {
+    const preset = PREDEFINED_SERVICES.find(s => s.id === serviceId);
+    if (!preset) return;
+
+    setItems(prev => {
+      const next = [...prev];
+      const existing = next[index] || {};
+      const rate = Number(preset.rate) || 0;
+      const qty = Math.max(1, Number(existing.quantity) || 1);
+      const gross = rate * qty;
+      const dType = existing.discountType || 'percentage';
+      const dVal = Math.max(0, Number(existing.discountValue) || 0);
+      const rawDisc = dType === 'percentage' ? (gross * Math.min(100, dVal)) / 100 : dVal;
+      const discAmt = Math.min(gross, Math.max(0, rawDisc));
+      const taxable = Math.max(0, gross - discAmt);
+      const selectedGst = applyGst ? gstRate : 0;
+      const gstAmt = (taxable * selectedGst) / 100;
+
+      next[index] = {
+        ...existing,
+        id: existing.id || `qi_${Date.now()}_${index}`,
+        name: preset.name,
+        rate: rate,
+        description: preset.description,
+        hsnSac: preset.hsnSac || '9983',
+        unit: preset.unit || 'JOB',
+        quantity: qty,
+        discountType: dType,
+        discountValue: dVal,
+        discountAmount: Math.round(discAmt * 100) / 100,
+        taxableAmount: Math.round(taxable * 100) / 100,
+        gstRate: selectedGst,
+        totalGstAmount: Math.round(gstAmt * 100) / 100,
+        total: Math.round((taxable + (applyGst ? gstAmt : 0)) * 100) / 100
+      };
+      return next;
+    });
+    toast.success(`Loaded "${preset.name}" into estimate`);
+  };
+
+  // Add a pre-defined service package as a new item row
+  const handleAddPredefinedServiceAsNew = (serviceId: string) => {
+    const preset = PREDEFINED_SERVICES.find(s => s.id === serviceId);
+    if (!preset) return;
+
+    setItems(prev => {
+      const isSingleEmpty = prev.length === 1 && !prev[0].name?.trim() && (!prev[0].rate || prev[0].rate === 0);
+      const rate = Number(preset.rate) || 0;
+      const qty = 1;
+      const gross = rate * qty;
+      const selectedGst = applyGst ? gstRate : 0;
+      const gstAmt = (gross * selectedGst) / 100;
+
+      const newItem: Partial<QuoteItem> = {
+        id: `qi_${Date.now()}_${prev.length}`,
+        name: preset.name,
+        rate: rate,
+        quantity: qty,
+        description: preset.description,
+        hsnSac: preset.hsnSac || '9983',
+        unit: preset.unit || 'JOB',
+        discountType: 'percentage',
+        discountValue: 0,
+        discountAmount: 0,
+        taxableAmount: rate,
+        gstRate: selectedGst,
+        totalGstAmount: Math.round(gstAmt * 100) / 100,
+        total: Math.round((gross + (applyGst ? gstAmt : 0)) * 100) / 100
+      };
+
+      if (isSingleEmpty) {
+        return [newItem];
+      }
+      return [...prev, newItem];
+    });
+    toast.success(`Added "${preset.name}" to estimate`);
   };
 
   const handleItemChange = (index: number, field: keyof QuoteItem, value: any) => {
-    const newItems = [...items];
-    const item = { ...newItems[index], [field]: value };
-    const rate = Math.max(0, Number(item.rate) || 0);
-    const qty = Math.max(0, Number(item.quantity) || 1);
-    const gross = rate * qty;
-    const dType = item.discountType || 'percentage';
-    const dVal = Math.max(0, Number(item.discountValue) || 0);
-    const rawDisc = dType === 'percentage' ? (gross * Math.min(100, dVal)) / 100 : dVal;
-    const discAmt = Math.min(gross, Math.max(0, rawDisc));
-    const taxable = Math.max(0, gross - discAmt);
-    const selectedGst = applyGst ? gstRate : 0;
-    const gstAmt = (taxable * selectedGst) / 100;
+    setItems(prev => {
+      const newItems = [...prev];
+      const existing = newItems[index] || {};
+      const item: any = { ...existing, [field]: value };
+      
+      const rate = item.rate === '' ? 0 : Math.max(0, Number(item.rate) || 0);
+      const qty = item.quantity === '' ? 1 : Math.max(1, Number(item.quantity) || 1);
+      const gross = rate * qty;
+      const dType = item.discountType || 'percentage';
+      const dVal = item.discountValue === '' ? 0 : Math.max(0, Number(item.discountValue) || 0);
+      const rawDisc = dType === 'percentage' ? (gross * Math.min(100, dVal)) / 100 : dVal;
+      const discAmt = Math.min(gross, Math.max(0, rawDisc));
+      const taxable = Math.max(0, gross - discAmt);
+      const selectedGst = applyGst ? gstRate : 0;
+      const gstAmt = (taxable * selectedGst) / 100;
 
-    item.discountType = dType;
-    item.discountValue = dVal;
-    item.discountAmount = Math.round(discAmt * 100) / 100;
-    item.taxableAmount = Math.round(taxable * 100) / 100;
-    item.totalGstAmount = Math.round(gstAmt * 100) / 100;
-    item.total = Math.round((taxable + (applyGst ? gstAmt : 0)) * 100) / 100;
+      item.discountType = dType;
+      item.discountValue = item.discountValue === '' ? '' : dVal;
+      item.discountAmount = Math.round(discAmt * 100) / 100;
+      item.taxableAmount = Math.round(taxable * 100) / 100;
+      item.gstRate = selectedGst;
+      item.totalGstAmount = Math.round(gstAmt * 100) / 100;
+      item.total = Math.round((taxable + (applyGst ? gstAmt : 0)) * 100) / 100;
 
-    newItems[index] = item;
-    setItems(newItems);
+      newItems[index] = item;
+      return newItems;
+    });
+  };
+
+  // Toggle GST and update all items in real-time
+  const handleToggleGst = (enable: boolean, newRate?: number) => {
+    setApplyGst(enable);
+    const rateToUse = enable ? (newRate !== undefined ? newRate : (gstRate === 0 ? 18 : gstRate)) : 0;
+    setGstRate(rateToUse);
+    setItems(prev => prev.map(item => {
+      const rate = (item.rate as any) === '' ? 0 : Math.max(0, Number(item.rate) || 0);
+      const qty = (item.quantity as any) === '' ? 1 : Math.max(1, Number(item.quantity) || 1);
+      const gross = rate * qty;
+      const dType = item.discountType || 'percentage';
+      const dVal = (item.discountValue as any) === '' ? 0 : Math.max(0, Number(item.discountValue) || 0);
+      const rawDisc = dType === 'percentage' ? (gross * Math.min(100, dVal)) / 100 : dVal;
+      const discAmt = Math.min(gross, Math.max(0, rawDisc));
+      const taxable = Math.max(0, gross - discAmt);
+      const gstAmt = (taxable * rateToUse) / 100;
+      return {
+        ...item,
+        taxableAmount: Math.round(taxable * 100) / 100,
+        gstRate: rateToUse,
+        totalGstAmount: Math.round(gstAmt * 100) / 100,
+        total: Math.round((taxable + (enable ? gstAmt : 0)) * 100) / 100
+      };
+    }));
   };
 
   // Add Ad Campaign package with dynamic calculation into Quote items
   const handleAddAdCampaignToQuote = () => {
     const stats = calculateAdBudgetStats(adPlatform, adDailyBudget, adDays);
+    const selectedGst = applyGst ? gstRate : 0;
+    const gross = stats.totalBudget;
+    const gstAmt = (gross * selectedGst) / 100;
     
-    // Check if there is a single empty item placeholder
-    const isSingleEmpty = items.length === 1 && !items[0].name && (!items[0].rate || items[0].rate === 0);
-    
-    const newItem: Partial<QuoteItem> = {
-      id: Date.now().toString(),
-      name: stats.title,
-      description: stats.description,
-      rate: stats.totalBudget,
-      quantity: 1,
-      unit: 'CAMPAIGN',
-      hsnSac: '998313',
-      gstRate: applyGst ? gstRate : 0
-    };
+    setItems(prev => {
+      const isSingleEmpty = prev.length === 1 && !prev[0].name?.trim() && (!prev[0].rate || prev[0].rate === 0);
+      const newItem: Partial<QuoteItem> = {
+        id: `qi_ad_${Date.now()}`,
+        name: stats.title,
+        description: stats.description,
+        rate: stats.totalBudget,
+        quantity: 1,
+        unit: 'CAMPAIGN',
+        hsnSac: '998313',
+        discountType: 'percentage',
+        discountValue: 0,
+        discountAmount: 0,
+        taxableAmount: stats.totalBudget,
+        gstRate: selectedGst,
+        totalGstAmount: Math.round(gstAmt * 100) / 100,
+        total: Math.round((gross + (applyGst ? gstAmt : 0)) * 100) / 100
+      };
 
-    if (isSingleEmpty) {
-      setItems([newItem]);
-    } else {
-      setItems([...items, newItem]);
-    }
+      if (isSingleEmpty) {
+        return [newItem];
+      }
+      return [...prev, newItem];
+    });
+    toast.success(`Added ${stats.title} to estimate`);
   };
 
   const handleSaveQuote = async (e?: React.FormEvent) => {
     if (e && e.preventDefault) e.preventDefault();
 
-    if (!clientName.trim()) {
-      toast.error('Please enter a Client Name before saving the estimate.');
+    const targetClient = clientName.trim() || companyName.trim();
+    if (!targetClient) {
+      toast.error('Please enter a Client Name or Company Name before saving the estimate.');
+      return;
+    }
+
+    // Filter valid items that have a title or positive rate
+    const validItems = items.filter(it => it.name?.trim() || (Number(it.rate) || 0) > 0);
+    if (validItems.length === 0) {
+      toast.error('Please enter at least one service item with a title or rate.');
       return;
     }
 
     setIsSaving(true);
     
-    // Auto-create client snapshot
-    const formattedClientName = companyName.trim() ? `${clientName.trim()} (${companyName.trim()})` : clientName.trim();
+    const existingQuote = editingQuoteId ? quotes.find(q => q.id === editingQuoteId) : null;
+    const resolvedClientId = existingQuote?.clientId || existingQuote?.client?.id || `client_${Date.now()}`;
+    const formattedClientName = companyName.trim() 
+      ? (clientName.trim() ? `${clientName.trim()} (${companyName.trim()})` : companyName.trim()) 
+      : clientName.trim();
+
     const tempClientObj: Client = {
-      id: `client_${Date.now()}`,
+      id: resolvedClientId,
       name: formattedClientName,
-      contactPerson: clientName.trim(),
+      contactPerson: clientName.trim() || companyName.trim(),
       email: clientEmail.trim(),
       phone: clientPhone.trim(),
       billingAddress: clientAddress.trim() || 'Not Provided',
@@ -227,7 +415,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
       gstin: '',
       pan: '',
       customerType: 'B2B',
-      createdAt: new Date().toISOString()
+      createdAt: existingQuote?.client?.createdAt || new Date().toISOString()
     };
 
     let subtotal = 0;
@@ -237,12 +425,12 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
     const isInter = clientStateCode !== (businessProfile?.stateCode || '23');
     const selectedGstRate = applyGst ? gstRate : 0;
 
-    const finalItems = items.map((item, i) => {
-      const rate = Math.max(0, Number(item.rate) || 0);
-      const qty = Math.max(1, Number(item.quantity) || 1);
+    const finalItems = validItems.map((item, i) => {
+      const rate = (item.rate as any) === '' ? 0 : Math.max(0, Number(item.rate) || 0);
+      const qty = (item.quantity as any) === '' ? 1 : Math.max(1, Number(item.quantity) || 1);
       const gross = rate * qty;
       const dType = item.discountType || 'percentage';
-      const dVal = Math.max(0, Number(item.discountValue) || 0);
+      const dVal = (item.discountValue as any) === '' ? 0 : Math.max(0, Number(item.discountValue) || 0);
       const rawDisc = dType === 'percentage' ? (gross * Math.min(100, dVal)) / 100 : dVal;
       const discAmt = Math.min(gross, Math.max(0, rawDisc));
       const taxable = Math.max(0, gross - discAmt);
@@ -255,57 +443,59 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
 
       return {
         id: item.id || `qi_${Date.now()}_${i}`,
-        name: item.name?.trim() || 'Service',
+        name: item.name?.trim() || 'Service Package',
         description: item.description?.trim() || '',
         hsnSac: item.hsnSac || '9983',
         quantity: qty,
         unit: item.unit || 'JOB',
         rate: rate,
         discountType: dType,
-        discountValue: dVal,
-        discountAmount: discAmt,
-        taxableAmount: taxable,
+        discountValue: typeof dVal === 'number' ? dVal : 0,
+        discountAmount: Math.round(discAmt * 100) / 100,
+        taxableAmount: Math.round(taxable * 100) / 100,
         gstRate: selectedGstRate,
-        cgstAmount: applyGst && !isInter ? gstAmt / 2 : 0,
-        sgstAmount: applyGst && !isInter ? gstAmt / 2 : 0,
-        igstAmount: applyGst && isInter ? gstAmt : 0,
-        totalGstAmount: gstAmt,
-        total: taxable + (applyGst ? gstAmt : 0)
+        cgstAmount: applyGst && !isInter ? Math.round((gstAmt / 2) * 100) / 100 : 0,
+        sgstAmount: applyGst && !isInter ? Math.round((gstAmt / 2) * 100) / 100 : 0,
+        igstAmount: applyGst && isInter ? Math.round(gstAmt * 100) / 100 : 0,
+        totalGstAmount: Math.round(gstAmt * 100) / 100,
+        total: Math.round((taxable + (applyGst ? gstAmt : 0)) * 100) / 100
       } as QuoteItem;
     });
 
-    const grandTotal = totalTaxable + (applyGst ? totalGst : 0);
+    const grandTotal = Math.round((totalTaxable + (applyGst ? totalGst : 0)) * 100) / 100;
 
-    const newQuote = {
+    const newQuote: any = {
+      ...(existingQuote || {}),
+      id: editingQuoteId || undefined,
       quoteNumber,
-      clientId: tempClientObj.id,
+      clientId: resolvedClientId,
       client: tempClientObj,
       quoteDate: quoteDate,
       validUntil: validUntil,
-      status: 'draft',
+      status: existingQuote?.status || 'draft',
       placeOfSupply: clientState,
       placeOfSupplyCode: clientStateCode,
       currency: 'INR',
       items: finalItems,
-      subtotal,
-      totalItemDiscount: totalDiscount,
-      totalTaxableAmount: totalTaxable,
-      totalGst: applyGst ? totalGst : 0,
-      totalCgst: applyGst && !isInter ? totalGst / 2 : 0,
-      totalSgst: applyGst && !isInter ? totalGst / 2 : 0,
-      totalIgst: applyGst && isInter ? totalGst : 0,
+      subtotal: Math.round(subtotal * 100) / 100,
+      totalItemDiscount: Math.round(totalDiscount * 100) / 100,
+      totalTaxableAmount: Math.round(totalTaxable * 100) / 100,
+      totalGst: applyGst ? Math.round(totalGst * 100) / 100 : 0,
+      totalCgst: applyGst && !isInter ? Math.round((totalGst / 2) * 100) / 100 : 0,
+      totalSgst: applyGst && !isInter ? Math.round((totalGst / 2) * 100) / 100 : 0,
+      totalIgst: applyGst && isInter ? Math.round(totalGst * 100) / 100 : 0,
       grandTotal,
       totalInWords: numberToIndianWords(Math.round(grandTotal)),
-      template: 'classic',
+      template: existingQuote?.template || 'classic',
       showBankDetails: false,
       seller: businessProfile ? { ...businessProfile, logoUrl: undefined } : undefined
     };
 
     try {
       if (editingQuoteId) {
-        await api.updateQuote(editingQuoteId, newQuote as any);
+        await api.updateQuote(editingQuoteId, newQuote);
       } else {
-        await api.createQuote(newQuote as any);
+        await api.createQuote(newQuote);
       }
       
       await onRefresh();
@@ -324,7 +514,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
   const handleDownloadEstimatePdf = async () => {
     try {
       setIsDownloadingPdf(true);
-      const targetClientName = clientName.trim() || companyName.trim();
+      const targetClientName = clientName.trim() || companyName.trim() || 'Client';
       const filename = getClientPdfFilename(targetClientName, `Estimate-${quoteNumber}`);
       await downloadElementAsPdf('live-quote-pdf', filename);
       toast.success(`Estimate PDF "${filename}" downloaded`);
@@ -384,9 +574,9 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
   };
 
   const tempClient: Client = {
-    id: `client_${Date.now()}`,
+    id: editingQuoteId || `client_${Date.now()}`,
     name: companyName ? `${clientName} (${companyName})` : (clientName || 'New Client'),
-    contactPerson: clientName,
+    contactPerson: clientName || companyName || 'Client',
     email: clientEmail,
     phone: clientPhone,
     billingAddress: clientAddress || 'Not Provided',
@@ -409,11 +599,11 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
   const selectedGstRate = applyGst ? gstRate : 0;
 
   const finalItems = items.map((item, i) => {
-    const rate = Math.max(0, Number(item.rate) || 0);
-    const qty = Math.max(1, Number(item.quantity) || 1);
+    const rate = (item.rate as any) === '' ? 0 : Math.max(0, Number(item.rate) || 0);
+    const qty = (item.quantity as any) === '' ? 1 : Math.max(1, Number(item.quantity) || 1);
     const gross = rate * qty;
     const dType = item.discountType || 'percentage';
-    const dVal = Math.max(0, Number(item.discountValue) || 0);
+    const dVal = (item.discountValue as any) === '' ? 0 : Math.max(0, Number(item.discountValue) || 0);
     const rawDisc = dType === 'percentage' ? (gross * Math.min(100, dVal)) / 100 : dVal;
     const discAmt = Math.min(gross, Math.max(0, rawDisc));
     const taxable = Math.max(0, gross - discAmt);
@@ -425,27 +615,27 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
     totalGst += gstAmt;
 
     return {
-      id: `qi_${Date.now()}_${i}`,
-      name: item.name || 'Service',
-      description: item.description || '',
-      hsnSac: '9983',
+      id: item.id || `preview_qi_${i}`,
+      name: item.name?.trim() || 'Service Item',
+      description: item.description?.trim() || '',
+      hsnSac: item.hsnSac || '9983',
       quantity: qty,
-      unit: 'JOB',
+      unit: item.unit || 'JOB',
       rate: rate,
       discountType: dType,
       discountValue: dVal,
-      discountAmount: discAmt,
-      taxableAmount: taxable,
+      discountAmount: Math.round(discAmt * 100) / 100,
+      taxableAmount: Math.round(taxable * 100) / 100,
       gstRate: selectedGstRate,
-      cgstAmount: applyGst && !isInter ? gstAmt / 2 : 0,
-      sgstAmount: applyGst && !isInter ? gstAmt / 2 : 0,
-      igstAmount: applyGst && isInter ? gstAmt : 0,
-      totalGstAmount: gstAmt,
-      total: taxable + (applyGst ? gstAmt : 0)
+      cgstAmount: applyGst && !isInter ? Math.round((gstAmt / 2) * 100) / 100 : 0,
+      sgstAmount: applyGst && !isInter ? Math.round((gstAmt / 2) * 100) / 100 : 0,
+      igstAmount: applyGst && isInter ? Math.round(gstAmt * 100) / 100 : 0,
+      totalGstAmount: Math.round(gstAmt * 100) / 100,
+      total: Math.round((taxable + (applyGst ? gstAmt : 0)) * 100) / 100
     } as QuoteItem;
   });
 
-  const grandTotal = totalTaxable + (applyGst ? totalGst : 0);
+  const grandTotal = Math.round((totalTaxable + (applyGst ? totalGst : 0)) * 100) / 100;
 
   const previewQuote = {
     quoteNumber,
@@ -458,13 +648,13 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
     placeOfSupplyCode: clientStateCode,
     currency: 'INR',
     items: finalItems,
-    subtotal,
-    totalItemDiscount: totalDiscount,
-    totalTaxableAmount: totalTaxable,
-    totalGst: applyGst ? totalGst : 0,
-    totalCgst: applyGst && !isInter ? totalGst / 2 : 0,
-    totalSgst: applyGst && !isInter ? totalGst / 2 : 0,
-    totalIgst: applyGst && isInter ? totalGst : 0,
+    subtotal: Math.round(subtotal * 100) / 100,
+    totalItemDiscount: Math.round(totalDiscount * 100) / 100,
+    totalTaxableAmount: Math.round(totalTaxable * 100) / 100,
+    totalGst: applyGst ? Math.round(totalGst * 100) / 100 : 0,
+    totalCgst: applyGst && !isInter ? Math.round((totalGst / 2) * 100) / 100 : 0,
+    totalSgst: applyGst && !isInter ? Math.round((totalGst / 2) * 100) / 100 : 0,
+    totalIgst: applyGst && isInter ? Math.round(totalGst * 100) / 100 : 0,
     grandTotal,
     totalInWords: numberToIndianWords(Math.round(grandTotal)),
     template: 'classic',
@@ -718,6 +908,51 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                   </div>
                   
                   <div className="p-4 space-y-3.5">
+                    {/* Optional Auto-fill from Existing Clients */}
+                    {clients && clients.length > 0 && (
+                      <div className="p-2.5 bg-teal-50/50 border border-teal-200/80 rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-bold text-teal-950 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-teal-700" />
+                            Auto-Fill from Existing Client
+                          </label>
+                          <span className="text-[10px] text-slate-500 font-medium">Optional</span>
+                        </div>
+                        <select
+                          className="w-full px-2.5 py-1.5 bg-white border border-teal-200 rounded-lg text-xs font-medium text-slate-800 focus:ring-2 focus:ring-teal-700 outline-hidden cursor-pointer"
+                          onChange={(e) => {
+                            const selected = clients.find(c => c.id === e.target.value);
+                            if (selected) {
+                              let cName = selected.name || '';
+                              let compName = '';
+                              const match = cName.match(/^(.*?)\s*\((.*?)\)$/);
+                              if (match) {
+                                cName = match[1];
+                                compName = match[2];
+                              }
+                              setClientName(cName);
+                              setCompanyName(compName);
+                              setClientEmail(selected.email || '');
+                              setClientPhone(selected.phone || '');
+                              setClientAddress(selected.billingAddress || selected.shippingAddress || '');
+                              setClientState(selected.state || 'Madhya Pradesh');
+                              setClientStateCode(selected.stateCode || '23');
+                              toast.success(`Client details for "${selected.name}" auto-filled`);
+                            }
+                            e.target.value = "";
+                          }}
+                          defaultValue=""
+                        >
+                          <option value="" disabled>-- Select Client to Auto-Fill Information --</option>
+                          {clients.map(c => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} {c.phone ? `(${c.phone})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1">Client Name <span className="text-rose-500">*</span></label>
@@ -791,18 +1026,53 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
 
                 {/* 2. Quotation Service Items & Deliverables (Selection of Service) */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-                  <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
+                  <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
                     <h3 className="text-xs font-bold text-teal-950 uppercase tracking-wider flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-teal-700"></span>
                       2. Service Items &amp; Deliverables
                     </h3>
-                    <button 
-                      type="button" 
-                      onClick={handleAddItem} 
-                      className="text-xs font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add Service
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {/* Quick Add Ready Package Dropdown */}
+                      <select
+                        className="text-xs font-bold text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-300 px-2.5 py-1 rounded-lg transition-all shadow-2xs cursor-pointer outline-hidden"
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAddPredefinedServiceAsNew(e.target.value);
+                            e.target.value = "";
+                          }
+                        }}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>+ Add Service Package</option>
+                        <optgroup label="Paid Ads & Lead Generation">
+                          {PREDEFINED_SERVICES.filter(s => s.category === 'Paid Ads & Lead Gen').map(s => (
+                            <option key={s.id} value={s.id}>{s.name} (₹{s.rate.toLocaleString('en-IN')})</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Website Development">
+                          {PREDEFINED_SERVICES.filter(s => s.category === 'Website Development').map(s => (
+                            <option key={s.id} value={s.id}>{s.name} (₹{s.rate.toLocaleString('en-IN')})</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Digital Marketing & SEO">
+                          {PREDEFINED_SERVICES.filter(s => s.category === 'Digital Marketing & SEO').map(s => (
+                            <option key={s.id} value={s.id}>{s.name} (₹{s.rate.toLocaleString('en-IN')})</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Landing Pages">
+                          {PREDEFINED_SERVICES.filter(s => s.category === 'Landing Pages').map(s => (
+                            <option key={s.id} value={s.id}>{s.name} (₹{s.rate.toLocaleString('en-IN')})</option>
+                          ))}
+                        </optgroup>
+                      </select>
+                      <button 
+                        type="button" 
+                        onClick={handleAddItem} 
+                        className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Custom Row
+                      </button>
+                    </div>
                   </div>
 
                   <div className="p-4 space-y-4">
@@ -815,17 +1085,12 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                             Select Pre-Defined Service Package
                           </label>
                           <select 
-                            className="w-full px-3 py-1.5 border border-teal-200 bg-white rounded-lg text-xs font-medium text-slate-800 focus:ring-2 focus:ring-teal-700 outline-hidden shadow-2xs cursor-pointer"
+                            className="w-full px-3 py-1.5 border border-teal-300 bg-white rounded-lg text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-teal-700 outline-hidden shadow-2xs cursor-pointer"
                             onChange={(e) => {
-                              const preset = PREDEFINED_SERVICES.find(s => s.id === e.target.value);
-                              if (preset) {
-                                handleItemChange(index, 'name', preset.name);
-                                handleItemChange(index, 'rate', preset.rate);
-                                handleItemChange(index, 'description', preset.description);
-                                handleItemChange(index, 'hsnSac', preset.hsnSac);
-                                handleItemChange(index, 'unit', preset.unit);
+                              if (e.target.value) {
+                                handleApplyPredefinedService(index, e.target.value);
+                                e.target.value = "";
                               }
-                              e.target.value = "";
                             }}
                             defaultValue=""
                           >
@@ -871,8 +1136,8 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                             <input 
                               type="number" 
                               required 
-                              value={item.rate ?? ''} 
-                              onChange={e => handleItemChange(index, 'rate', Number(e.target.value))} 
+                              value={item.rate === 0 && !item.name ? '' : (item.rate ?? '')} 
+                              onChange={e => handleItemChange(index, 'rate', e.target.value === '' ? '' : Number(e.target.value))} 
                               className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:border-teal-700 outline-hidden" 
                               placeholder="0" 
                             />
@@ -882,8 +1147,8 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                             <input 
                               type="number" 
                               min={1}
-                              value={item.quantity || 1} 
-                              onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))} 
+                              value={item.quantity ?? 1} 
+                              onChange={e => handleItemChange(index, 'quantity', e.target.value === '' ? '' : Number(e.target.value))} 
                               className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center text-slate-900 focus:border-teal-700 outline-hidden" 
                             />
                           </div>
@@ -899,8 +1164,8 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                                 type="number" 
                                 min={0}
                                 placeholder="0"
-                                value={item.discountValue || ''} 
-                                onChange={e => handleItemChange(index, 'discountValue', Number(e.target.value) || 0)} 
+                                value={item.discountValue ?? ''} 
+                                onChange={e => handleItemChange(index, 'discountValue', e.target.value === '' ? '' : Number(e.target.value))} 
                                 className="w-full min-w-0 px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:border-teal-700 outline-hidden" 
                               />
                               <select
@@ -1111,10 +1376,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            setApplyGst(false);
-                            setGstRate(0);
-                          }}
+                          onClick={() => handleToggleGst(false)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                             !applyGst 
                               ? 'bg-teal-700 text-white shadow-2xs' 
@@ -1125,10 +1387,7 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            setApplyGst(true);
-                            if (gstRate === 0) setGstRate(18);
-                          }}
+                          onClick={() => handleToggleGst(true, gstRate === 0 ? 18 : gstRate)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                             applyGst 
                               ? 'bg-teal-700 text-white shadow-2xs' 
@@ -1146,9 +1405,11 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                             value={gstRate}
                             onChange={e => {
                               const val = Number(e.target.value);
-                              setGstRate(val);
-                              if (val === 0) setApplyGst(false);
-                              else setApplyGst(true);
+                              if (val === 0) {
+                                handleToggleGst(false);
+                              } else {
+                                handleToggleGst(true, val);
+                              }
                             }}
                             className="px-2.5 py-1.5 border border-teal-300 bg-white rounded-lg text-xs font-bold text-teal-950 focus:ring-2 focus:ring-teal-700 outline-hidden cursor-pointer"
                           >
@@ -1267,6 +1528,19 @@ export const QuoteManager: React.FC<QuoteManagerProps> = ({
                 <p className="text-xs text-slate-400">Quote #{viewingQuote.quoteNumber}</p>
               </div>
               <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const q = viewingQuote;
+                    setViewingQuote(null);
+                    handleEditQuote(q);
+                  }}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 rounded text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                  title="Edit this estimate"
+                >
+                  <Edit className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Edit Estimate</span>
+                </button>
                 {viewingQuote.status !== 'converted' && (
                   <button
                     onClick={async () => {
